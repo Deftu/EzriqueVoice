@@ -1,0 +1,10 @@
+[versions]
+kord = "0.13.0"
+lavaplayer = "1.3.77"
+gson = "2.10.1"
+enhancedeventbus = "1.2.0"
+okhttp = "4.10.0"
+sqlitejdbc = "3.36.0.3"
+exposed = "0.41.1"
+slf4j = "2.0.5"
+log4j = "2.20.0"
