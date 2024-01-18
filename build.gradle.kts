@@ -1,12 +1,12 @@
 plugins {
     java
+    application
     kotlin("jvm") version("1.9.10")
     val dgt = "1.22.2"
     id("dev.deftu.gradle.tools") version(dgt)
     id("dev.deftu.gradle.tools.blossom") version(dgt)
     id("dev.deftu.gradle.tools.maven-publishing") version(dgt)
     id("dev.deftu.gradle.tools.shadow") version(dgt)
-    //id("dev.deftu.gradle.tools.discord.kord") version(dgt)
 }
 
 repositories {
@@ -35,4 +35,10 @@ dependencies {
     shade(implementation("org.apache.logging.log4j:log4j-api:${libs.versions.log4j.get()}")!!)
     shade(implementation("org.apache.logging.log4j:log4j-core:${libs.versions.log4j.get()}")!!)
     shade(implementation("org.apache.logging.log4j:log4j-slf4j-impl:${libs.versions.log4j.get()}")!!)
+}
+
+tasks.jar {
+    manifest.attributes(
+        "Main-Class" to "dev.deftu.ezrique.voice.EzriqueVoiceKt"
+    )
 }
