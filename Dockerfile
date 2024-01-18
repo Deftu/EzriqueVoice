@@ -1,16 +1,24 @@
-FROM gcr.io/distroless/java17-debian11
+# Build
+FROM openjdk:17-alpine as builder
 
-WORKDIR /app
+ENV APP_HOME=/app
+WORKDIR $APP_HOME
 
-COPY gradlew /app/
-COPY gradle /app/gradle
-COPY gradle.properties /app/
-COPY build.gradle.kts /app/
-COPY settings.gradle.kts /app/
-COPY src /app/src
+COPY gradlew $APP_HOME/
+COPY gradle $APP_HOME/gradle
+COPY gradle.properties $APP_HOME/
+COPY build.gradle.kts $APP_HOME/
+COPY settings.gradle.kts $APP_HOME/
+COPY src $APP_HOME/src
 
 RUN ./gradlew build
 
-COPY build/libs/*.jar /app/build/
+# Run
+FROM gcr.io/distroless/java17-debian11
 
-ENTRYPOINT ["java", "-jar", "/app/build/libs/EzriqueVoice-0.1.0-all.jar"]
+ENV APP_HOME=/app
+WORKDIR $APP_HOME
+
+COPY --from=builder $APP_HOME/build/libs/*.jar $APP_HOME
+
+ENTRYPOINT ["java", "-jar", "EzriqueVoice-0.1.0-all.jar"]
