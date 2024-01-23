@@ -1,5 +1,3 @@
-@file:OptIn(KordVoice::class)
-
 package dev.deftu.ezrique.voice
 
 import com.google.gson.FieldNamingPolicy
@@ -8,9 +6,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import dev.deftu.ezrique.voice.sql.ChannelLinkTable
 import dev.deftu.ezrique.voice.sql.MemberConfigTable
-import dev.kord.common.annotation.KordVoice
 import dev.kord.common.entity.PresenceStatus
-import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import dev.kord.core.event.gateway.ReadyEvent
 import dev.kord.core.event.guild.GuildCreateEvent
