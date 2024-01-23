@@ -1,3 +1,5 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 plugins {
     java
     kotlin("jvm") version("1.9.10")
@@ -36,8 +38,16 @@ dependencies {
     shade(implementation("org.apache.logging.log4j:log4j-slf4j-impl:${libs.versions.log4j.get()}")!!)
 }
 
-tasks.jar {
-    manifest.attributes(
-        "Main-Class" to "dev.deftu.ezrique.voice.EzriqueVoiceKt"
-    )
+tasks {
+    jar {
+        enabled = false
+        manifest.attributes(
+            "Main-Class" to "dev.deftu.ezrique.voice.EzriqueVoiceKt"
+        )
+    }
+
+    withType<ShadowJar> {
+        archiveFileName.set("${projectData.name}.jar")
+        archiveClassifier.set("")
+    }
 }
