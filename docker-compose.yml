@@ -1,0 +1,7 @@
+services:
+  ezrique-voice:
+    container_name: ezrique-voice
+    build: .
+    volumes:
+      - ./config.json:/app/config.json
+      - ./database.db:/app/database.db
