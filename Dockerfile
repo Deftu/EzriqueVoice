@@ -1,5 +1,5 @@
 # Build
-FROM openjdk:17-alpine
+FROM openjdk:17-alpine as builder
 
 ENV APP_HOME=/app
 WORKDIR $APP_HOME
@@ -14,6 +14,8 @@ COPY src $APP_HOME/src
 RUN ./gradlew build
 
 # Run
+FROM gcr.io/distroless/java17-debian11
+
 ENV APP_HOME=/app
 WORKDIR $APP_HOME
 
