@@ -46,6 +46,10 @@ object VoiceHandler {
         return connections[guildId]
     }
 
+    fun isVoiceConnected(guildId: Snowflake): Boolean {
+        return connections.containsKey(guildId)
+    }
+
     suspend fun setVoiceChannel(
         guildId: Snowflake,
         channel: VoiceChannel,
@@ -55,6 +59,7 @@ object VoiceHandler {
         if (connection == null) {
             val playerInstance = setupPlayer(guildId)
             connections[guildId] = channel.connect {
+                selfDeaf = true
                 audioProvider { AudioFrame.fromData(playerInstance.player.provide()?.data) }
                 builder()
             }

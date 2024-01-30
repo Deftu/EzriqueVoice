@@ -16,6 +16,7 @@ import dev.kord.gateway.Intent
 import dev.kord.gateway.Intents
 import dev.kord.gateway.NON_PRIVILEGED
 import dev.kord.gateway.PrivilegedIntent
+import io.ktor.util.*
 import kotlinx.coroutines.flow.count
 import org.apache.logging.log4j.LogManager
 import org.jetbrains.exposed.sql.Database
@@ -23,6 +24,8 @@ import org.jetbrains.exposed.sql.DatabaseConfig
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.io.File
+import java.nio.file.Path
+import java.nio.file.StandardWatchEventKinds
 import kotlin.system.exitProcess
 
 const val NAME = "@PROJECT_NAME@"
@@ -33,6 +36,9 @@ val gson = GsonBuilder()
     .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
     .create()
 
+private val token: String
+    get() = token()
+
 lateinit var kord: Kord
     private set
 var config: JsonObject? = null
@@ -41,7 +47,7 @@ var config: JsonObject? = null
 suspend fun main() {
     logger.info("Starting $NAME v$VERSION")
     readConfig()
-    kord = Kord(token())
+    kord = Kord(token)
 
     transaction {
         logger.info("Connected to database")
@@ -68,8 +74,8 @@ suspend fun main() {
     }
 
     VoiceHandler.setup()
-    TextToSpeechHandler.setup()
     CommandHandler.setup()
+    TextToSpeechHandler.setup()
 
     kord.login {
         @OptIn(PrivilegedIntent::class)
@@ -93,20 +99,27 @@ private fun readConfig() {
 
     logger.info("Reading config file $fileName")
 
+    /**
+     * Reads a JSON object from the file provided and sets it as the config.
+     */
+    fun readFrom(file: File) {
+        val text = file.readText()
+        val json = JsonParser.parseString(text)
+        if (!json.isJsonObject) {
+            logger.error("Config file $fileName is not a valid JSON object!")
+            exitProcess(1)
+        }
+
+        config = json.asJsonObject
+    }
+
     val file = File(fileName)
     if (!file.exists()) {
         logger.error("Config file $fileName does not exist!")
         exitProcess(1)
     }
 
-    val text = file.readText()
-    val json = JsonParser.parseString(text)
-    if (!json.isJsonObject) {
-        logger.error("Config file $fileName is not a valid JSON object!")
-        exitProcess(1)
-    }
-
-    config = json.asJsonObject
+    readFrom(file)
 }
 
 private fun token(): String {
