@@ -1,4 +1,4 @@
-package dev.deftu.ezrique.voice.lavaplayer
+package dev.deftu.ezrique.voice.audio.lavaplayer.raw
 
 import com.sedmelluq.discord.lavaplayer.tools.io.ExtendedBufferedInputStream
 import com.sedmelluq.discord.lavaplayer.tools.io.SeekableInputStream

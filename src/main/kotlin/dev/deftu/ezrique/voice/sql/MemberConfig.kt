@@ -8,7 +8,7 @@ import org.jetbrains.exposed.dao.id.LongIdTable
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 
 object MemberConfigTable : LongIdTable("member_config") {
-    val enabled = bool("enabled").default(true)
+    val tts = bool("tts").default(true)
     val voice = varchar("voice", 70).default(Voice.DEFAULT.code)
 }
 
@@ -16,16 +16,18 @@ class MemberConfig(
     id: EntityID<Long>
 ) : LongEntity(id) {
     companion object : LongEntityClass<MemberConfig>(MemberConfigTable) {
-        suspend fun isEnabled(memberId: Long): Boolean {
+        suspend fun isTtsEnabled(memberId: Long): Boolean {
             return newSuspendedTransaction {
-                findById(memberId)?.enabled ?: true
+                findById(memberId)?.tts ?: true
             }
         }
 
-        suspend fun setEnabled(memberId: Long, enabled: Boolean) {
-            newSuspendedTransaction {
+        suspend fun setTtsEnabled(memberId: Long, enabled: Boolean): Boolean {
+            return newSuspendedTransaction {
                 val config = findById(memberId) ?: new(memberId) {}
-                config.enabled = enabled
+                config.tts = enabled
+
+                config.tts
             }
         }
 
@@ -45,6 +47,6 @@ class MemberConfig(
         }
     }
 
-    var enabled by MemberConfigTable.enabled
+    var tts by MemberConfigTable.tts
     var voice by MemberConfigTable.voice
 }

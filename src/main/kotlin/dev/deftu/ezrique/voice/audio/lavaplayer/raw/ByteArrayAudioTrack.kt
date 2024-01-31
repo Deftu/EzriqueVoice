@@ -1,4 +1,4 @@
-package dev.deftu.ezrique.voice.lavaplayer
+package dev.deftu.ezrique.voice.audio.lavaplayer.raw
 
 import com.sedmelluq.discord.lavaplayer.container.MediaContainerDescriptor
 import com.sedmelluq.discord.lavaplayer.source.AudioSourceManager

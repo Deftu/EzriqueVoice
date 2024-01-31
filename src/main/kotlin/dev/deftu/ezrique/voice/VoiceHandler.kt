@@ -2,13 +2,8 @@
 
 package dev.deftu.ezrique.voice
 
-import com.sedmelluq.discord.lavaplayer.player.AudioConfiguration
-import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager
-import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers
-import dev.deftu.ezrique.voice.lavaplayer.ByteArrayAudioSourceManager
-import dev.deftu.ezrique.voice.lavaplayer.PlayerInstance
-import dev.deftu.ezrique.voice.lavaplayer.TrackScheduler
-import dev.deftu.ezrique.voice.sql.ChannelLink
+import dev.deftu.ezrique.voice.audio.GuildPlayer
+import dev.deftu.ezrique.voice.events.VoiceChannelJoinEvent
 import dev.kord.common.annotation.KordVoice
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.behavior.channel.connect
@@ -24,21 +19,27 @@ import kotlinx.coroutines.flow.first
 
 object VoiceHandler {
     private val connections = mutableMapOf<Snowflake, VoiceConnection>()
-    val playerManager = DefaultAudioPlayerManager().apply {
-        AudioSourceManagers.registerRemoteSources(this)
-        AudioSourceManagers.registerLocalSource(this)
-        configuration.resamplingQuality = AudioConfiguration.ResamplingQuality.HIGH
-        registerSourceManager(ByteArrayAudioSourceManager())
-    }
-    private val guildPlayers = mutableMapOf<Snowflake, PlayerInstance>()
+    private val guildPlayers = mutableMapOf<Snowflake, List<GuildPlayer<*>>>()
 
     fun setup() {
         kord.on<ReadyEvent> {
-            handleReady(this)
+            /**
+             * Handles an edge-case where the bot's user is still in a voice channel despite having gone offline at some point
+             */
+            getGuilds().collect { guild ->
+                val channel = guild.getMember(kord.selfId).getVoiceStateOrNull()?.getChannelOrNull() as? VoiceChannel ?: return@collect
+                setVoiceChannel(guild.id, channel)
+            }
         }
 
         kord.on<VoiceStateUpdateEvent> {
-            handleChannelUpdate(this)
+            val guild = state.getGuildOrNull() ?: return@on
+            val ownChannel = guild.getMember(kord.selfId).getVoiceStateOrNull()?.getChannelOrNull() as? VoiceChannel ?: return@on
+
+            if (
+                ownChannel.voiceStates.count() == 1 &&
+                ownChannel.voiceStates.first().userId == kord.selfId
+            ) leaveVoiceChannel(guild.id)
         }
     }
 
@@ -52,16 +53,14 @@ object VoiceHandler {
 
     suspend fun setVoiceChannel(
         guildId: Snowflake,
-        channel: VoiceChannel,
-        builder: VoiceConnectionBuilder.() -> Unit = {}
+        channel: VoiceChannel
     ) {
         val connection = connections[guildId]
         if (connection == null) {
-            val playerInstance = setupPlayer(guildId)
+            eventBus.post(VoiceChannelJoinEvent(guildId, channel.id))
             connections[guildId] = channel.connect {
                 selfDeaf = true
-                audioProvider { AudioFrame.fromData(playerInstance.player.provide()?.data) }
-                builder()
+                audioProvider { AudioFrame.fromData(createAudioOutput(guildId)) }
             }
         } else connection.move(channel.id)
     }
@@ -73,39 +72,47 @@ object VoiceHandler {
         return true
     }
 
-    fun getPlayer(guildId: Snowflake): PlayerInstance? {
-        return guildPlayers[guildId]
+    fun registerPlayer(guildId: Snowflake, player: GuildPlayer<*>) {
+        val players = guildPlayers[guildId]?.toMutableList() ?: mutableListOf()
+        players.add(player)
+        guildPlayers[guildId] = players
     }
 
-    private fun setupPlayer(guildId: Snowflake): PlayerInstance {
-        if (guildPlayers.containsKey(guildId)) return guildPlayers[guildId]!!
+    private fun createAudioOutput(guildId: Snowflake): ByteArray? {
+        val players = guildPlayers[guildId] ?: return null
+        val pcmFrames = players.mapNotNull { it.player.provide() }
+        if (pcmFrames.isEmpty()) return null
+        if (pcmFrames.size > 15) throw IllegalStateException("Too many players registered for guild $guildId")
 
-        val player = playerManager.createPlayer()
-        val scheduler = TrackScheduler(player)
-        player.addListener(scheduler)
+        fun mix(
+            frame1: ByteArray,
+            frame2: ByteArray,
+        ): ByteArray {
+            val maxLength = maxOf(frame1.size, frame2.size)
+            val mixedFrame = ByteArray(maxLength)
 
-        val instance = PlayerInstance(player, scheduler)
-        guildPlayers[guildId] = instance
-        return instance
-    }
+            for (i in 0 until maxLength - 1 step 2) { // Ensure not to exceed the array length
+                val sample1 = if (i + 1 < frame1.size) {
+                    ((frame1[i + 1].toInt() shl 8) or (frame1[i].toInt() and 0xFF))
+                } else 0
 
-    private suspend fun handleReady(event: ReadyEvent) {
-        /**
-         * Handles an edge-case where the bot's user is still in a voice channel despite having gone offline at some point
-         */
-        event.getGuilds().collect { guild ->
-            val channel = guild.getMember(kord.selfId).getVoiceStateOrNull()?.getChannelOrNull() as? VoiceChannel ?: return@collect
-            setVoiceChannel(guild.id, channel)
+                val sample2 = if (i + 1 < frame2.size) {
+                    ((frame2[i + 1].toInt() shl 8) or (frame2[i].toInt() and 0xFF))
+                } else 0
+
+                val mixedSample = sample1 + sample2
+                // Normalize and prevent clipping
+                val normalizedSample = mixedSample.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+
+                mixedFrame[i] = (normalizedSample and 0xFF).toByte()
+                if (i + 1 < mixedFrame.size) {
+                    mixedFrame[i + 1] = (normalizedSample shr 8).toByte()
+                }
+            }
+
+            return mixedFrame
         }
-    }
 
-    private suspend fun handleChannelUpdate(event: VoiceStateUpdateEvent) {
-        val guild = event.state.getGuildOrNull() ?: return
-        val ownChannel = guild.getMember(kord.selfId).getVoiceStateOrNull()?.getChannelOrNull() as? VoiceChannel ?: return
-
-        if (
-            ownChannel.voiceStates.count() == 1 &&
-            ownChannel.voiceStates.first().userId == kord.selfId
-        ) leaveVoiceChannel(guild.id)
+        return pcmFrames.map { it.data }.reduce { frame1, frame2 -> mix(frame1, frame2) }
     }
 }

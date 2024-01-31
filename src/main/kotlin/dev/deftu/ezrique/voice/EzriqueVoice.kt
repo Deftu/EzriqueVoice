@@ -4,28 +4,37 @@ import com.google.gson.FieldNamingPolicy
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import dev.deftu.ezrique.voice.music.MusicCommandHandler
+import dev.deftu.ezrique.voice.music.MusicHandler
 import dev.deftu.ezrique.voice.sql.ChannelLinkTable
+import dev.deftu.ezrique.voice.sql.GuildConfigTable
 import dev.deftu.ezrique.voice.sql.MemberConfigTable
+import dev.deftu.ezrique.voice.tts.TtsHandler
+import dev.deftu.ezrique.voice.tts.TtsCommandHandler
 import dev.kord.common.entity.PresenceStatus
 import dev.kord.core.Kord
+import dev.kord.core.entity.interaction.GroupCommand
+import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
+import dev.kord.core.entity.interaction.RootCommand
+import dev.kord.core.entity.interaction.SubCommand
 import dev.kord.core.event.gateway.ReadyEvent
 import dev.kord.core.event.guild.GuildCreateEvent
 import dev.kord.core.event.guild.GuildDeleteEvent
+import dev.kord.core.event.interaction.ChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
 import dev.kord.gateway.Intent
 import dev.kord.gateway.Intents
 import dev.kord.gateway.NON_PRIVILEGED
 import dev.kord.gateway.PrivilegedIntent
-import io.ktor.util.*
 import kotlinx.coroutines.flow.count
 import org.apache.logging.log4j.LogManager
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.DatabaseConfig
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
+import xyz.deftu.enhancedeventbus.bus
+import xyz.deftu.enhancedeventbus.invokers.LMFInvoker
 import java.io.File
-import java.nio.file.Path
-import java.nio.file.StandardWatchEventKinds
 import kotlin.system.exitProcess
 
 const val NAME = "@PROJECT_NAME@"
@@ -38,6 +47,10 @@ val gson = GsonBuilder()
 
 private val token: String
     get() = token()
+
+val eventBus = bus {
+    invoker = LMFInvoker()
+}
 
 lateinit var kord: Kord
     private set
@@ -53,7 +66,8 @@ suspend fun main() {
         logger.info("Connected to database")
         SchemaUtils.createMissingTablesAndColumns(
             ChannelLinkTable,
-            MemberConfigTable
+            MemberConfigTable,
+            GuildConfigTable
         )
     }
 
@@ -73,9 +87,42 @@ suspend fun main() {
         }
     }
 
+    kord.on<ChatInputCommandInteractionCreateEvent> {
+        try {
+            val guild = (interaction as? GuildChatInputCommandInteraction)?.getGuildOrNull()
+            val command = interaction.command
+            val rootName = command.rootName
+
+            val subCommandName = when (command) {
+                is RootCommand -> null
+                is GroupCommand -> command.name
+                is SubCommand -> command.name
+            }
+
+            val groupName = when (command) {
+                is RootCommand, is SubCommand -> null
+                is GroupCommand -> command.groupName
+            }
+
+            when (rootName) {
+                TtsCommandHandler.name -> TtsCommandHandler.handle(this, guild, rootName, subCommandName, groupName)
+                MusicCommandHandler.name -> MusicCommandHandler.handle(this, guild, rootName, subCommandName, groupName)
+                else -> BaseCommandHandler.handle(this, guild, rootName, subCommandName, groupName)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     VoiceHandler.setup()
-    CommandHandler.setup()
-    TextToSpeechHandler.setup()
+    TtsHandler.setup()
+    MusicHandler.initialize()
+
+    kord.createGlobalApplicationCommands {
+        BaseCommandHandler.setup(this)
+        TtsCommandHandler.setup(this)
+        MusicCommandHandler.setup(this)
+    }
 
     kord.login {
         @OptIn(PrivilegedIntent::class)
