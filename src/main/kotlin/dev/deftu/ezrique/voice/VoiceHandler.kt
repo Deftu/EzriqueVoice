@@ -2,6 +2,9 @@
 
 package dev.deftu.ezrique.voice
 
+import com.sedmelluq.discord.lavaplayer.format.StandardAudioDataFormats
+import com.sedmelluq.discord.lavaplayer.format.transcoder.OpusChunkEncoder
+import com.sedmelluq.discord.lavaplayer.player.AudioConfiguration
 import dev.deftu.ezrique.voice.audio.GuildPlayer
 import dev.deftu.ezrique.voice.events.VoiceChannelJoinEvent
 import dev.kord.common.annotation.KordVoice
@@ -13,13 +16,16 @@ import dev.kord.core.event.user.VoiceStateUpdateEvent
 import dev.kord.core.on
 import dev.kord.voice.AudioFrame
 import dev.kord.voice.VoiceConnection
-import dev.kord.voice.VoiceConnectionBuilder
 import kotlinx.coroutines.flow.count
 import kotlinx.coroutines.flow.first
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.ShortBuffer
 
 object VoiceHandler {
     private val connections = mutableMapOf<Snowflake, VoiceConnection>()
     private val guildPlayers = mutableMapOf<Snowflake, List<GuildPlayer<*>>>()
+    private val opusEncoder = StandardAudioDataFormats.DISCORD_OPUS.createEncoder(AudioConfiguration())
 
     fun setup() {
         kord.on<ReadyEvent> {
@@ -81,38 +87,45 @@ object VoiceHandler {
     private fun createAudioOutput(guildId: Snowflake): ByteArray? {
         val players = guildPlayers[guildId] ?: return null
         val pcmFrames = players.mapNotNull { it.player.provide() }
-        if (pcmFrames.isEmpty()) return null
-        if (pcmFrames.size > 15) throw IllegalStateException("Too many players registered for guild $guildId")
+        val byteOrder = ByteOrder.nativeOrder()
 
-        fun mix(
-            frame1: ByteArray,
-            frame2: ByteArray,
-        ): ByteArray {
-            val maxLength = maxOf(frame1.size, frame2.size)
-            val mixedFrame = ByteArray(maxLength)
+        val size = pcmFrames.sumOf { it.data.size }
+        val output = ByteBuffer.allocateDirect(size)
+        if (pcmFrames.size > 1) {
+            // There are multiple frames, so we need to mix them together, then encode the resulting PCM
+            val frameSize = pcmFrames.maxOf { it.data.size / 2 }
+            val shortBuffer = ByteBuffer.allocateDirect(frameSize * 2).order(byteOrder).asShortBuffer()
 
-            for (i in 0 until maxLength - 1 step 2) { // Ensure not to exceed the array length
-                val sample1 = if (i + 1 < frame1.size) {
-                    ((frame1[i + 1].toInt() shl 8) or (frame1[i].toInt() and 0xFF))
-                } else 0
+            pcmFrames.forEach { frame ->
+                val buffer = ByteBuffer.wrap(frame.data).asShortBuffer()
+                val size = frame.data.size
+                for (i in 0 until frameSize) {
+                    val sample = if (i < size / 2) buffer[i] else 0
 
-                val sample2 = if (i + 1 < frame2.size) {
-                    ((frame2[i + 1].toInt() shl 8) or (frame2[i].toInt() and 0xFF))
-                } else 0
+                    var value = 0
+                    if (shortBuffer.capacity() > i) value += shortBuffer.get(i)
+                    value += sample
 
-                val mixedSample = sample1 + sample2
-                // Normalize and prevent clipping
-                val normalizedSample = mixedSample.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
-
-                mixedFrame[i] = (normalizedSample and 0xFF).toByte()
-                if (i + 1 < mixedFrame.size) {
-                    mixedFrame[i + 1] = (normalizedSample shr 8).toByte()
+                    shortBuffer.put(
+                        i,
+                        value.toShort()
+                    )
                 }
             }
 
-            return mixedFrame
+            shortBuffer.flip()
+            opusEncoder.encode(shortBuffer, output)
+        } else if (pcmFrames.isNotEmpty()) {
+            // There is only one frame, so we can just encode it directly
+            val pcmFrame = pcmFrames.first()
+            val shortBuffer = ByteBuffer.allocateDirect(pcmFrame.data.size).order(byteOrder).asShortBuffer()
+            shortBuffer.put(ByteBuffer.wrap(pcmFrame.data).asShortBuffer())
+            shortBuffer.flip()
+            opusEncoder.encode(shortBuffer, output)
         }
 
-        return pcmFrames.map { it.data }.reduce { frame1, frame2 -> mix(frame1, frame2) }
+        val data = ByteArray(output.remaining())
+        output.get(data)
+        return data
     }
 }

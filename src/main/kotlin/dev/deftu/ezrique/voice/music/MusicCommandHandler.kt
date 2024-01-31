@@ -244,7 +244,7 @@ object MusicCommandHandler : CommandHandler {
 
 
         val track = try {
-            player.scheduler.removeTrack(index)
+            player.scheduler.removeTrack(index + 1)
         } catch (e: Exception) {
             handleError(response, ErrorCode.REMOVE_MUSIC_TRACK_GUILD, e)
             return

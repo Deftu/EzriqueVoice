@@ -1,5 +1,6 @@
 package dev.deftu.ezrique.voice.tts
 
+import com.sedmelluq.discord.lavaplayer.format.StandardAudioDataFormats
 import com.sedmelluq.discord.lavaplayer.player.AudioConfiguration
 import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager
@@ -22,6 +23,7 @@ import dev.kord.core.behavior.interaction.response.DeferredEphemeralMessageInter
 import dev.kord.core.entity.Guild
 import dev.kord.core.event.message.MessageCreateEvent
 import dev.kord.core.on
+import io.ktor.utils.io.core.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -33,8 +35,13 @@ object TtsHandler {
     private val guildPlayers = mutableMapOf<Snowflake, GuildPlayer<TtsTrackScheduler>>()
     private val playerManager = DefaultAudioPlayerManager().apply {
         AudioSourceManagers.registerRemoteSources(this)
-        configuration.resamplingQuality = AudioConfiguration.ResamplingQuality.HIGH
         registerSourceManager(ByteArrayAudioSourceManager())
+        configuration.resamplingQuality = AudioConfiguration.ResamplingQuality.HIGH
+        configuration.outputFormat = when (ByteOrder.nativeOrder()) {
+            ByteOrder.BIG_ENDIAN -> StandardAudioDataFormats.DISCORD_PCM_S16_LE
+            ByteOrder.LITTLE_ENDIAN -> StandardAudioDataFormats.DISCORD_PCM_S16_BE
+            else -> throw IllegalStateException("Unknown byte order: ${ByteOrder.nativeOrder()}")
+        }
     }
 
     suspend fun setup() {
