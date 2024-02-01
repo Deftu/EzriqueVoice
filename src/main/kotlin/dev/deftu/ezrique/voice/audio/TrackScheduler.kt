@@ -58,7 +58,7 @@ class DefaultTrackScheduler(
     }
 
     override fun seekTo(position: Long) {
-        player.playingTrack?.position = position
+        player.playingTrack?.position = position * 1000
     }
 
     override fun getTrack(index: Int): AudioTrack? {

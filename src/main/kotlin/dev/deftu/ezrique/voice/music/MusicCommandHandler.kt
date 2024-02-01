@@ -382,10 +382,10 @@ object MusicCommandHandler : CommandHandler {
             return
         }
 
-        if (position < 0 || position > track.duration) {
+        if (position < 0 || position > (track.duration / 1000)) {
             response.respond {
                 errorEmbed {
-                    description = "Please enter a value between 0 and ${track.duration}!"
+                    description = "Please enter a value between 0 and ${track.duration / 1000}!"
                 }
             }
 
