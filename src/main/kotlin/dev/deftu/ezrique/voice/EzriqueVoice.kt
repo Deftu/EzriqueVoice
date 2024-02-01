@@ -77,13 +77,13 @@ suspend fun main() {
 
     kord.on<GuildCreateEvent> {
         kord.editPresence {
-            listening("your voice channels in ${kord.guilds.count()} guilds")
+            listening("your voice channels in ${kord.guilds.count()} servers")
         }
     }
 
     kord.on<GuildDeleteEvent> {
         kord.editPresence {
-            listening("your voice channels in ${kord.guilds.count()} guilds")
+            listening("your voice channels in ${kord.guilds.count()} servers")
         }
     }
 
