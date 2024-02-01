@@ -37,6 +37,10 @@ object BaseCommandHandler : CommandHandler {
         builder.input("about", "Shows information about the bot.") {
             dmPermission = false
         }
+
+        builder.input("perf", "Shows the bot's performance.") {
+            dmPermission = false
+        }
     }
 
     override suspend fun handle(
@@ -50,6 +54,7 @@ object BaseCommandHandler : CommandHandler {
             "join" -> handleJoin(event, guild)
             "leave" -> handleLeave(event, guild)
             "about" -> handleAbout(event, guild)
+            "perf" -> handlePerf(event, guild)
         }
     }
 
@@ -181,6 +186,36 @@ object BaseCommandHandler : CommandHandler {
                     name = "Guild Count"
                     value = "${dev.deftu.ezrique.voice.kord.guilds.count()}"
                     inline = true
+                }
+            }
+        }
+    }
+
+    private suspend fun handlePerf(
+        event: ChatInputCommandInteractionCreateEvent,
+        guild: Guild?
+    ) {
+        val response = event.interaction.deferEphemeralResponse()
+
+        val used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()
+        val max = Runtime.getRuntime().maxMemory()
+        val percent = (used.toDouble() / max.toDouble()) * 100
+
+        response.respond {
+            embed {
+                title = "Ezrique Voice Performance"
+                color = Color(0xC33F3F)
+                description = "Here's some information about my performance."
+
+                field {
+                    name = "Ping"
+                    value = event.interaction.kord.gateway.averagePing.toString()
+                    inline = true
+                }
+
+                field {
+                    name = "RAM Usage"
+                    value = "${used / 1024 / 1024}MB / ${max / 1024 / 1024}MB (${percent.toInt()}%)"
                 }
             }
         }
