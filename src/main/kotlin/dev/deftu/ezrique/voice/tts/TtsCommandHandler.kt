@@ -52,8 +52,14 @@ object TtsCommandHandler : CommandHandler {
             }
 
             subCommand("voice", "Sets the voice to use for TTS.") {
-                string("voice", "The voice to use.") {
-                    for (value in Voice.entries) {
+                string("voice_batch_1", "The voice to use. (EITHER PICK 1 OR 2)") {
+                    for (value in Voice.voicesBatch1) {
+                        choice(value.desc, value.code)
+                    }
+                }
+
+                string("voice_batch_2", "The voice to use. (EITHER PICK 1 OR 2)") {
+                    for (value in Voice.voicesBatch2) {
                         choice(value.desc, value.code)
                     }
                 }
@@ -243,8 +249,28 @@ object TtsCommandHandler : CommandHandler {
         response: DeferredEphemeralMessageInteractionResponseBehavior,
         guild: Guild
     ) {
-        val voiceCode = event.interaction.command.strings["voice"] ?: return
-        val voice = Voice.fromCode(voiceCode)
+        val voiceCode1 = event.interaction.command.strings["voice_batch_1"]
+        val voiceCode2 = event.interaction.command.strings["voice_batch_2"]
+        if (voiceCode1 == null && voiceCode2 == null) {
+            val currentVoice = MemberConfig.getVoice(member.id.get())
+            response.respond {
+                successEmbed {
+                    description = "Your current voice is ${currentVoice.desc}!"
+                }
+            }
+
+            return
+        } else if (voiceCode1 != null && voiceCode2 != null) {
+            response.respond {
+                errorEmbed {
+                    description = "You can only pick one voice!"
+                }
+            }
+
+            return
+        }
+
+        val voice = Voice.fromCode(voiceCode1 ?: voiceCode2!!)
 
         try {
             MemberConfig.setVoice(member.id.get(), voice)
