@@ -48,6 +48,6 @@ object MusicHandler {
 
     suspend fun getPlayer(
         guildId: Long,
-        response: DeferredEphemeralMessageInteractionResponseBehavior
+        response: DeferredEphemeralMessageInteractionResponseBehavior? = null
     ) = guildPlayers.getPlayer(guildId, response)
 }

@@ -88,8 +88,8 @@ class TtsTrackScheduler(private val player: AudioPlayer) : TrackScheduler(player
 
     override fun onTrackEnd(player: AudioPlayer, track: AudioTrack, endReason: AudioTrackEndReason) {
         if (endReason.mayStartNext) {
-            val nextEntry = queue.poll() ?: return
-            play(nextEntry.message, nextEntry.track)
+            val nextEntry: QueueEntry? = queue.poll()
+            if (nextEntry != null) play(nextEntry.message, nextEntry.track)
         }
     }
 
