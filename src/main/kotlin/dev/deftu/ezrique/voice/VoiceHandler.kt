@@ -75,6 +75,17 @@ object VoiceHandler {
         val connection = connections[guildId] ?: return false
         connection.shutdown()
         connections.remove(guildId)
+
+        val player = guildPlayers[guildId]
+        if (player != null) {
+            player.forEach { player ->
+                player.player.stopTrack()
+                player.player.destroy()
+            }
+
+            guildPlayers.remove(guildId)
+        }
+
         return true
     }
 
