@@ -4,23 +4,22 @@ import com.google.gson.FieldNamingPolicy
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import dev.deftu.ezrique.voice.music.MusicCommandHandler
+import dev.deftu.ezrique.voice.music.MusicInteractionHandler
 import dev.deftu.ezrique.voice.music.MusicHandler
+import dev.deftu.ezrique.voice.onboarding.OnboardingInteractionHandler
+import dev.deftu.ezrique.voice.onboarding.OnboardingHandler
 import dev.deftu.ezrique.voice.sql.ChannelLinkTable
 import dev.deftu.ezrique.voice.sql.GuildConfigTable
 import dev.deftu.ezrique.voice.sql.MemberConfigTable
 import dev.deftu.ezrique.voice.tts.TtsHandler
-import dev.deftu.ezrique.voice.tts.TtsCommandHandler
+import dev.deftu.ezrique.voice.tts.TtsInteractionHandler
 import dev.kord.common.entity.PresenceStatus
 import dev.kord.core.Kord
-import dev.kord.core.entity.interaction.GroupCommand
-import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
-import dev.kord.core.entity.interaction.RootCommand
-import dev.kord.core.entity.interaction.SubCommand
+import dev.kord.core.entity.interaction.*
 import dev.kord.core.event.gateway.ReadyEvent
 import dev.kord.core.event.guild.GuildCreateEvent
 import dev.kord.core.event.guild.GuildDeleteEvent
-import dev.kord.core.event.interaction.ChatInputCommandInteractionCreateEvent
+import dev.kord.core.event.interaction.*
 import dev.kord.core.on
 import dev.kord.gateway.Intent
 import dev.kord.gateway.Intents
@@ -105,23 +104,71 @@ suspend fun main() {
             }
 
             when (rootName) {
-                TtsCommandHandler.name -> TtsCommandHandler.handle(this, guild, rootName, subCommandName, groupName)
-                MusicCommandHandler.name -> MusicCommandHandler.handle(this, guild, rootName, subCommandName, groupName)
-                else -> BaseCommandHandler.handle(this, guild, rootName, subCommandName, groupName)
+                OnboardingInteractionHandler.name -> OnboardingInteractionHandler.handleCommand(this, guild, rootName, subCommandName, groupName)
+                TtsInteractionHandler.name -> TtsInteractionHandler.handleCommand(this, guild, rootName, subCommandName, groupName)
+                MusicInteractionHandler.name -> MusicInteractionHandler.handleCommand(this, guild, rootName, subCommandName, groupName)
+                else -> BaseInteractionHandler.handleCommand(this, guild, rootName, subCommandName, groupName)
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
+    kord.on<ButtonInteractionCreateEvent> {
+        try {
+            val guild = (interaction as? GuildButtonInteraction)?.getGuildOrNull()
+
+            when {
+                interaction.componentId.startsWith(OnboardingInteractionHandler.name) -> OnboardingInteractionHandler.handleButton(this, guild, interaction.componentId)
+                interaction.componentId.startsWith(TtsInteractionHandler.name) -> TtsInteractionHandler.handleButton(this, guild, interaction.componentId)
+                interaction.componentId.startsWith(MusicInteractionHandler.name) -> MusicInteractionHandler.handleButton(this, guild, interaction.componentId)
+                else -> BaseInteractionHandler.handleButton(this, guild, interaction.componentId)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    kord.on<ModalSubmitInteractionCreateEvent> {
+        try {
+            val guild = (interaction as? GuildModalSubmitInteraction)?.getGuildOrNull()
+
+            when {
+                interaction.modalId.startsWith(OnboardingInteractionHandler.name) -> OnboardingInteractionHandler.handleModal(this, guild, interaction.modalId)
+                interaction.modalId.startsWith(TtsInteractionHandler.name) -> TtsInteractionHandler.handleModal(this, guild, interaction.modalId)
+                interaction.modalId.startsWith(MusicInteractionHandler.name) -> MusicInteractionHandler.handleModal(this, guild, interaction.modalId)
+                else -> BaseInteractionHandler.handleModal(this, guild, interaction.modalId)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    kord.on<SelectMenuInteractionCreateEvent> {
+        try {
+            val guild = (interaction as? GuildSelectMenuInteraction)?.getGuildOrNull()
+
+            when {
+                interaction.componentId.startsWith(OnboardingInteractionHandler.name) -> OnboardingInteractionHandler.handleSelectMenu(this, guild, interaction.componentId)
+                interaction.componentId.startsWith(TtsInteractionHandler.name) -> TtsInteractionHandler.handleSelectMenu(this, guild, interaction.componentId)
+                interaction.componentId.startsWith(MusicInteractionHandler.name) -> MusicInteractionHandler.handleSelectMenu(this, guild, interaction.componentId)
+                else -> BaseInteractionHandler.handleSelectMenu(this, guild, interaction.componentId)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    OnboardingHandler.setup()
     VoiceHandler.setup()
     TtsHandler.setup()
     MusicHandler.initialize()
 
     kord.createGlobalApplicationCommands {
-        BaseCommandHandler.setup(this)
-        TtsCommandHandler.setup(this)
-        MusicCommandHandler.setup(this)
+        BaseInteractionHandler.setupCommands(this)
+        OnboardingInteractionHandler.setupCommands(this)
+        TtsInteractionHandler.setupCommands(this)
+        MusicInteractionHandler.setupCommands(this)
     }
 
     kord.login {
