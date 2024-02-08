@@ -17,10 +17,10 @@ import dev.kord.core.event.interaction.ChatInputCommandInteractionCreateEvent
 import dev.kord.rest.builder.interaction.*
 import dev.kord.rest.builder.message.embed
 
-object TtsCommandHandler : CommandHandler {
+object TtsInteractionHandler : InteractionHandler {
     override val name = "tts"
 
-    override fun setup(builder: GlobalMultiApplicationCommandBuilder) {
+    override fun setupCommands(builder: GlobalMultiApplicationCommandBuilder) {
         builder.input(name, "Handles all TTS features.") {
             dmPermission = false
 
@@ -70,7 +70,7 @@ object TtsCommandHandler : CommandHandler {
         }
     }
 
-    override suspend fun handle(
+    override suspend fun handleCommand(
         event: ChatInputCommandInteractionCreateEvent,
         guild: Guild?,
         commandName: String,

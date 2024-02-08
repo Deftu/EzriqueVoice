@@ -1,6 +1,6 @@
 package dev.deftu.ezrique.voice
 
-import dev.deftu.ezrique.voice.utils.CommandHandler
+import dev.deftu.ezrique.voice.utils.InteractionHandler
 import dev.deftu.ezrique.voice.utils.checkGuild
 import dev.deftu.ezrique.voice.utils.errorEmbed
 import dev.deftu.ezrique.voice.utils.successEmbed
@@ -18,10 +18,10 @@ import dev.kord.rest.builder.interaction.channel
 import dev.kord.rest.builder.message.embed
 import kotlinx.coroutines.flow.count
 
-object BaseCommandHandler : CommandHandler {
+object BaseInteractionHandler : InteractionHandler {
     override val name = ""
 
-    override fun setup(builder: GlobalMultiApplicationCommandBuilder) {
+    override fun setupCommands(builder: GlobalMultiApplicationCommandBuilder) {
         builder.input("join", "Joins the voice channel you're in.") {
             dmPermission = false
 
@@ -43,7 +43,7 @@ object BaseCommandHandler : CommandHandler {
         }
     }
 
-    override suspend fun handle(
+    override suspend fun handleCommand(
         event: ChatInputCommandInteractionCreateEvent,
         guild: Guild?,
         commandName: String,

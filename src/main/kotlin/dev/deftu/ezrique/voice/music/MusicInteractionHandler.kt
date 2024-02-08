@@ -13,10 +13,10 @@ import dev.kord.core.event.interaction.ChatInputCommandInteractionCreateEvent
 import dev.kord.rest.builder.interaction.*
 import dev.kord.rest.builder.message.embed
 
-object MusicCommandHandler : CommandHandler {
+object MusicInteractionHandler : InteractionHandler {
     override val name = "music"
 
-    override fun setup(builder: GlobalMultiApplicationCommandBuilder) {
+    override fun setupCommands(builder: GlobalMultiApplicationCommandBuilder) {
         builder.input(name, "Handles all music features.") {
             dmPermission = false
 
@@ -88,7 +88,7 @@ object MusicCommandHandler : CommandHandler {
         }
     }
 
-    override suspend fun handle(
+    override suspend fun handleCommand(
         event: ChatInputCommandInteractionCreateEvent,
         guild: Guild?,
         commandName: String,
