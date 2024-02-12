@@ -2,8 +2,7 @@ package dev.deftu.ezrique.voice
 
 import com.google.gson.FieldNamingPolicy
 import com.google.gson.GsonBuilder
-import com.google.gson.JsonObject
-import com.google.gson.JsonParser
+import dev.deftu.ezrique.*
 import dev.deftu.ezrique.voice.music.MusicInteractionHandler
 import dev.deftu.ezrique.voice.music.MusicHandler
 import dev.deftu.ezrique.voice.onboarding.OnboardingInteractionHandler
@@ -15,7 +14,6 @@ import dev.deftu.ezrique.voice.tts.TtsHandler
 import dev.deftu.ezrique.voice.tts.TtsInteractionHandler
 import dev.kord.common.entity.PresenceStatus
 import dev.kord.core.Kord
-import dev.kord.core.entity.interaction.*
 import dev.kord.core.event.gateway.ReadyEvent
 import dev.kord.core.event.guild.GuildCreateEvent
 import dev.kord.core.event.guild.GuildDeleteEvent
@@ -25,49 +23,72 @@ import dev.kord.gateway.Intent
 import dev.kord.gateway.Intents
 import dev.kord.gateway.NON_PRIVILEGED
 import dev.kord.gateway.PrivilegedIntent
+import io.sentry.Sentry
 import kotlinx.coroutines.flow.count
 import org.apache.logging.log4j.LogManager
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.DatabaseConfig
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
-import xyz.deftu.enhancedeventbus.bus
-import xyz.deftu.enhancedeventbus.invokers.LMFInvoker
-import java.io.File
-import kotlin.system.exitProcess
 
 const val NAME = "@PROJECT_NAME@"
 const val VERSION = "@PROJECT_VERSION@"
 val logger = LogManager.getLogger(NAME)
-val database = Database.connect("jdbc:sqlite:database.db", "org.sqlite.JDBC", databaseConfig = DatabaseConfig { useNestedTransactions = true })
 val gson = GsonBuilder()
     .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
     .create()
 
-private val token: String
-    get() = token()
+private val dbPassword: String
+    get() {
+        var dbPassword = System.getenv("DATABASE_PASSWORD")
+        if (dbPassword == null || dbPassword.isEmpty()) {
+            dbPassword = config.get("database_password")?.asString
+            if (dbPassword == null || dbPassword.isEmpty()) error("No DB password provided!")
+        }
 
-val eventBus = bus {
-    invoker = LMFInvoker()
-}
+        return dbPassword
+    }
 
 lateinit var kord: Kord
-    private set
-var config: JsonObject? = null
     private set
 
 suspend fun main() {
     logger.info("Starting $NAME v$VERSION")
-    readConfig()
-    kord = Kord(token)
 
-    transaction {
-        logger.info("Connected to database")
-        SchemaUtils.createMissingTablesAndColumns(
-            ChannelLinkTable,
-            MemberConfigTable,
-            GuildConfigTable
+    logger.info("Setting up Sentry")
+    Sentry.init { options ->
+        options.dsn = "https://a8bef282a10087aea3e04095ad3e281e@o1228118.ingest.sentry.io/4506714187366400"
+        options.release = "$NAME@$VERSION"
+    }
+
+    logger.info("Setting up Kord")
+    kord = Kord(token) {
+        setup()
+    }
+
+    try {
+        logger.info("Setting up database")
+        Database.connect(
+            url = "jdbc:postgresql:ezrique_voice",
+            user = "postgres",
+            password = dbPassword,
+            driver = "org.postgresql.Driver",
+            databaseConfig = DatabaseConfig {
+                useNestedTransactions = true
+            }
         )
+
+        transaction {
+            logger.info("Connected to database")
+            SchemaUtils.createMissingTablesAndColumns(
+                ChannelLinkTable,
+                MemberConfigTable,
+                GuildConfigTable
+            )
+        }
+    } catch (e: Exception) {
+        handleError(e, null)
+        return // Don't continue if the database isn't set up
     }
 
     kord.on<ReadyEvent> {
@@ -88,20 +109,8 @@ suspend fun main() {
 
     kord.on<ChatInputCommandInteractionCreateEvent> {
         try {
-            val guild = (interaction as? GuildChatInputCommandInteraction)?.getGuildOrNull()
-            val command = interaction.command
-            val rootName = command.rootName
-
-            val subCommandName = when (command) {
-                is RootCommand -> null
-                is GroupCommand -> command.name
-                is SubCommand -> command.name
-            }
-
-            val groupName = when (command) {
-                is RootCommand, is SubCommand -> null
-                is GroupCommand -> command.groupName
-            }
+            val guild = maybeGetGuild()
+            val (rootName, subCommandName, groupName) = interaction.command.names
 
             when (rootName) {
                 OnboardingInteractionHandler.name -> OnboardingInteractionHandler.handleCommand(this, guild, rootName, subCommandName, groupName)
@@ -110,13 +119,13 @@ suspend fun main() {
                 else -> BaseInteractionHandler.handleCommand(this, guild, rootName, subCommandName, groupName)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            handleError(e, ErrorCode.UNKNOWN_COMMAND_ERROR)
         }
     }
 
     kord.on<ButtonInteractionCreateEvent> {
         try {
-            val guild = (interaction as? GuildButtonInteraction)?.getGuildOrNull()
+            val guild = maybeGetGuild()
 
             when {
                 interaction.componentId.startsWith(OnboardingInteractionHandler.name) -> OnboardingInteractionHandler.handleButton(this, guild, interaction.componentId)
@@ -125,13 +134,13 @@ suspend fun main() {
                 else -> BaseInteractionHandler.handleButton(this, guild, interaction.componentId)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            handleError(e, ErrorCode.UNKNOWN_BUTTON_ERROR)
         }
     }
 
     kord.on<ModalSubmitInteractionCreateEvent> {
         try {
-            val guild = (interaction as? GuildModalSubmitInteraction)?.getGuildOrNull()
+            val guild = maybeGetGuild()
 
             when {
                 interaction.modalId.startsWith(OnboardingInteractionHandler.name) -> OnboardingInteractionHandler.handleModal(this, guild, interaction.modalId)
@@ -140,13 +149,13 @@ suspend fun main() {
                 else -> BaseInteractionHandler.handleModal(this, guild, interaction.modalId)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            handleError(e, ErrorCode.UNKNOWN_MODAL_ERROR)
         }
     }
 
     kord.on<SelectMenuInteractionCreateEvent> {
         try {
-            val guild = (interaction as? GuildSelectMenuInteraction)?.getGuildOrNull()
+            val guild = maybeGetGuild()
 
             when {
                 interaction.componentId.startsWith(OnboardingInteractionHandler.name) -> OnboardingInteractionHandler.handleSelectMenu(this, guild, interaction.componentId)
@@ -155,7 +164,7 @@ suspend fun main() {
                 else -> BaseInteractionHandler.handleSelectMenu(this, guild, interaction.componentId)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            handleError(e, ErrorCode.UNKNOWN_SELECTION_ERROR)
         }
     }
 
@@ -183,48 +192,4 @@ suspend fun main() {
             listening("your voice channels in ${kord.guilds.count()} guilds")
         }
     }
-}
-
-private fun readConfig() {
-    var fileName = System.getenv("CONFIG")
-    fileName = if (fileName == null || fileName.isEmpty()) {
-        "config.json"
-    } else if (!fileName.endsWith(".json")) "$fileName.json" else fileName
-
-    logger.info("Reading config file $fileName")
-
-    /**
-     * Reads a JSON object from the file provided and sets it as the config.
-     */
-    fun readFrom(file: File) {
-        val text = file.readText()
-        val json = JsonParser.parseString(text)
-        if (!json.isJsonObject) {
-            logger.error("Config file $fileName is not a valid JSON object!")
-            exitProcess(1)
-        }
-
-        config = json.asJsonObject
-    }
-
-    val file = File(fileName)
-    if (!file.exists()) {
-        logger.error("Config file $fileName does not exist!")
-        exitProcess(1)
-    }
-
-    readFrom(file)
-}
-
-private fun token(): String {
-    var token = System.getenv("TOKEN")
-    if (token == null || token.isEmpty()) {
-        token = config?.get("token")?.asString
-        if (token == null || token.isEmpty()) {
-            logger.error("No token provided!")
-            exitProcess(1)
-        }
-    }
-
-    return token
 }
