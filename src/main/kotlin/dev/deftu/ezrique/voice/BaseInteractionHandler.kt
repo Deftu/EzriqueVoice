@@ -103,7 +103,7 @@ object BaseInteractionHandler : InteractionHandler {
             return
         }
 
-        VoiceHandler.setVoiceChannel(guild.id, channel)
+        VoiceHandler.setVoiceChannel(guild.id, channel, event.shard)
         response.respond {
             successEmbed {
                 description = "Joined ${channel.mention}!"
