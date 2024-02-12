@@ -5,6 +5,7 @@ package dev.deftu.ezrique.voice
 import com.sedmelluq.discord.lavaplayer.format.StandardAudioDataFormats
 import com.sedmelluq.discord.lavaplayer.format.transcoder.OpusChunkEncoder
 import com.sedmelluq.discord.lavaplayer.player.AudioConfiguration
+import dev.deftu.ezrique.events
 import dev.deftu.ezrique.voice.audio.GuildPlayer
 import dev.deftu.ezrique.voice.events.VoiceChannelJoinEvent
 import dev.kord.common.annotation.KordVoice
@@ -34,7 +35,7 @@ object VoiceHandler {
              */
             getGuilds().collect { guild ->
                 val channel = guild.getMember(kord.selfId).getVoiceStateOrNull()?.getChannelOrNull() as? VoiceChannel ?: return@collect
-                setVoiceChannel(guild.id, channel)
+                setVoiceChannel(guild.id, channel, shard)
             }
         }
 
@@ -59,11 +60,12 @@ object VoiceHandler {
 
     suspend fun setVoiceChannel(
         guildId: Snowflake,
-        channel: VoiceChannel
+        channel: VoiceChannel,
+        shard: Int = -1
     ) {
         val connection = connections[guildId]
         if (connection == null) {
-            eventBus.post(VoiceChannelJoinEvent(guildId, channel.id))
+            events.tryEmit(VoiceChannelJoinEvent(kord, null, shard, guildId, channel.id))
             connections[guildId] = channel.connect {
                 selfDeaf = true
                 audioProvider { AudioFrame.fromData(createAudioOutput(guildId)) }
