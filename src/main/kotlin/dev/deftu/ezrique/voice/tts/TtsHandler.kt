@@ -8,6 +8,7 @@ import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers
 import com.sedmelluq.discord.lavaplayer.tools.FriendlyException
 import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack
+import dev.deftu.ezrique.config
 import dev.deftu.ezrique.voice.*
 import dev.deftu.ezrique.voice.events.VoiceChannelJoinEvent
 import dev.deftu.ezrique.voice.audio.GuildPlayer
@@ -45,14 +46,14 @@ object TtsHandler {
     }
 
     suspend fun setup() {
-        eventBus.on<VoiceChannelJoinEvent> { event ->
+        kord.on<VoiceChannelJoinEvent> {
             val audioPlayer = playerManager.createPlayer()
             val scheduler = TtsTrackScheduler(audioPlayer)
             audioPlayer.addListener(scheduler)
 
             val player = GuildPlayer(audioPlayer, scheduler)
-            guildPlayers[event.guildId] = player
-            VoiceHandler.registerPlayer(event.guildId, player)
+            guildPlayers[guildId] = player
+            VoiceHandler.registerPlayer(guildId, player)
         }
 
         kord.on<MessageCreateEvent> {
@@ -155,7 +156,7 @@ object TtsHandler {
         }
 
         var value = validate(System.getenv("TEXT_BYPASS"))
-        if (value == DEFAULT_TEXT_BYPASS) value = validate(config?.get("textBypass")?.asString)
+        if (value == DEFAULT_TEXT_BYPASS) value = validate(config.get("textBypass")?.asString)
 
         return value
     }

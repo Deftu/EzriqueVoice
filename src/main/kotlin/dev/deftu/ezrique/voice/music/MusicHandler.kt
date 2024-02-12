@@ -7,11 +7,12 @@ import com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager
 import dev.deftu.ezrique.voice.VoiceHandler
 import dev.deftu.ezrique.voice.audio.DefaultTrackScheduler
 import dev.deftu.ezrique.voice.audio.GuildPlayer
-import dev.deftu.ezrique.voice.eventBus
 import dev.deftu.ezrique.voice.events.VoiceChannelJoinEvent
+import dev.deftu.ezrique.voice.kord
 import dev.deftu.ezrique.voice.utils.getPlayer
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.behavior.interaction.response.DeferredEphemeralMessageInteractionResponseBehavior
+import dev.kord.core.on
 import io.ktor.utils.io.core.*
 
 object MusicHandler {
@@ -29,14 +30,14 @@ object MusicHandler {
     }
 
     fun initialize() {
-        eventBus.on<VoiceChannelJoinEvent> { event ->
+        kord.on<VoiceChannelJoinEvent> {
             val audioPlayer = playerManager.createPlayer()
             val scheduler = DefaultTrackScheduler(audioPlayer)
             audioPlayer.addListener(scheduler)
 
             val player = GuildPlayer(audioPlayer, scheduler)
-            guildPlayers[event.guildId] = player
-            VoiceHandler.registerPlayer(event.guildId, player)
+            guildPlayers[guildId] = player
+            VoiceHandler.registerPlayer(guildId, player)
         }
     }
 
