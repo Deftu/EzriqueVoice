@@ -20,5 +20,6 @@ ENV APP_HOME=/app
 WORKDIR $APP_HOME
 
 COPY --from=builder $APP_HOME/build/libs/*.jar $APP_HOME/
-
+HEALTHCHECK --interval=30s --timeout=30s --start-period=30s \
+    --retries=3 CMD curl -f http://localhost:6139/health || exit 1
 ENTRYPOINT ["java", "-jar", "EzriqueVoice.jar"]

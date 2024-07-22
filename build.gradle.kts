@@ -40,6 +40,9 @@ dependencies {
     shade(implementation("dev.kord:kord-core-voice:${libs.versions.kord.get()}")!!)
     shade(implementation("dev.kord:kord-voice:${libs.versions.kord.get()}")!!)
     shade(implementation("com.sedmelluq:lavaplayer:${libs.versions.lavaplayer.get()}")!!)
+
+    shade(implementation("io.ktor:ktor-server-core:${libs.versions.ktor.get()}")!!)
+    shade(implementation("io.ktor:ktor-server-netty:${libs.versions.ktor.get()}")!!)
 }
 
 tasks {

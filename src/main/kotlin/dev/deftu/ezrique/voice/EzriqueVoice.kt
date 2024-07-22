@@ -12,6 +12,8 @@ import dev.deftu.ezrique.voice.sql.GuildConfigTable
 import dev.deftu.ezrique.voice.sql.MemberConfigTable
 import dev.deftu.ezrique.voice.tts.TtsHandler
 import dev.deftu.ezrique.voice.tts.TtsInteractionHandler
+import dev.deftu.ezrique.voice.utils.Healthchecks
+import dev.deftu.ezrique.voice.utils.isInDocker
 import dev.kord.common.entity.PresenceStatus
 import dev.kord.core.Kord
 import dev.kord.core.event.gateway.ReadyEvent
@@ -61,11 +63,6 @@ suspend fun main() {
         options.release = "$NAME@$VERSION"
     }
 
-    logger.info("Setting up Kord")
-    kord = Kord(token) {
-        setup()
-    }
-
     try {
         logger.info("Setting up database")
         Database.connect(
@@ -91,8 +88,23 @@ suspend fun main() {
         return // Don't continue if the database isn't set up
     }
 
+    try {
+        logger.info("Setting up Kord")
+        kord = Kord(token) {
+            setup()
+        }
+    } catch (e: Exception) {
+        handleError(e, null)
+        return // Don't continue if Kord isn't set up
+    }
+
     kord.on<ReadyEvent> {
         logger.info("Logged in as ${kord.getSelf().tag}")
+
+        if (isInDocker()) {
+            // Set up healthcheck HTTP server
+            Healthchecks.start()
+        }
     }
 
     kord.on<GuildCreateEvent> {
