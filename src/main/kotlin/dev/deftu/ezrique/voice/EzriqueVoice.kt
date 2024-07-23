@@ -82,7 +82,7 @@ suspend fun main() {
                 useNestedTransactions = true
             },
 
-            url = dbUrl,
+            url = "jdbc:postgresql://$dbUrl",
 
             user = "ezrique_voice",
             password = dbPassword
