@@ -67,7 +67,7 @@ suspend fun main() {
         logger.info("Setting up database")
         Database.connect(
             url = "jdbc:postgresql:ezrique_voice",
-            user = "postgres",
+            user = "ezrique_voice",
             password = dbPassword,
             driver = "org.postgresql.Driver",
             databaseConfig = DatabaseConfig {
@@ -131,7 +131,7 @@ suspend fun main() {
                 else -> BaseInteractionHandler.handleCommand(this, guild, rootName, subCommandName, groupName)
             }
         } catch (e: Exception) {
-            handleError(e, ErrorCode.UNKNOWN_COMMAND_ERROR)
+            handleError(e, ErrorCode.UNKNOWN_COMMAND)
         }
     }
 
@@ -146,7 +146,7 @@ suspend fun main() {
                 else -> BaseInteractionHandler.handleButton(this, guild, interaction.componentId)
             }
         } catch (e: Exception) {
-            handleError(e, ErrorCode.UNKNOWN_BUTTON_ERROR)
+            handleError(e, ErrorCode.UNKNOWN_BUTTON)
         }
     }
 
@@ -161,7 +161,7 @@ suspend fun main() {
                 else -> BaseInteractionHandler.handleModal(this, guild, interaction.modalId)
             }
         } catch (e: Exception) {
-            handleError(e, ErrorCode.UNKNOWN_MODAL_ERROR)
+            handleError(e, ErrorCode.UNKNOWN_MODAL)
         }
     }
 
@@ -176,7 +176,7 @@ suspend fun main() {
                 else -> BaseInteractionHandler.handleSelectMenu(this, guild, interaction.componentId)
             }
         } catch (e: Exception) {
-            handleError(e, ErrorCode.UNKNOWN_SELECTION_ERROR)
+            handleError(e, ErrorCode.UNKNOWN_SELECTION)
         }
     }
 
@@ -192,16 +192,20 @@ suspend fun main() {
         MusicInteractionHandler.setupCommands(this)
     }
 
-    kord.login {
-        @OptIn(PrivilegedIntent::class)
-        intents {
-            +Intents.NON_PRIVILEGED
-            +Intent.MessageContent
-        }
+    try {
+        kord.login {
+            @OptIn(PrivilegedIntent::class)
+            intents {
+                +Intents.NON_PRIVILEGED
+                +Intent.MessageContent
+            }
 
-        presence {
-            status = PresenceStatus.DoNotDisturb
-            listening("your voice channels in ${kord.guilds.count()} guilds")
+            presence {
+                status = PresenceStatus.DoNotDisturb
+                listening("your voice channels in ${kord.guilds.count()} guilds")
+            }
         }
+    } catch (e: Exception) {
+        handleError(e, ErrorCode.KORD_LOGIN)
     }
 }
