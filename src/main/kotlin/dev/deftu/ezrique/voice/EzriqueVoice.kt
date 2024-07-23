@@ -40,6 +40,17 @@ val gson = GsonBuilder()
     .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
     .create()
 
+private val dbUrl: String
+    get() {
+        var dbUrl = System.getenv("DATABASE_URL")
+        if (dbUrl == null || dbUrl.isEmpty()) {
+            dbUrl = config.get("database_url")?.asString
+            if (dbUrl == null || dbUrl.isEmpty()) error("No DB URL provided!")
+        }
+
+        return dbUrl
+    }
+
 private val dbPassword: String
     get() {
         var dbPassword = System.getenv("DATABASE_PASSWORD")
@@ -60,13 +71,13 @@ suspend fun main() {
     logger.info("Setting up Sentry")
     Sentry.init { options ->
         options.dsn = "https://a8bef282a10087aea3e04095ad3e281e@o1228118.ingest.sentry.io/4506714187366400"
-        options.release = "$NAME@$VERSION"
+        options.release = "${NAME}@${VERSION}"
     }
 
     try {
         logger.info("Setting up database")
         Database.connect(
-            url = "jdbc:postgresql:ezrique_voice",
+            url = dbUrl,
             user = "ezrique_voice",
             password = dbPassword,
             driver = "org.postgresql.Driver",
@@ -76,13 +87,14 @@ suspend fun main() {
         )
 
         transaction {
-            logger.info("Connected to database")
             SchemaUtils.createMissingTablesAndColumns(
                 ChannelLinkTable,
                 MemberConfigTable,
                 GuildConfigTable
             )
         }
+
+        logger.info("Connected to database")
     } catch (e: Exception) {
         handleError(e, null)
         return // Don't continue if the database isn't set up
