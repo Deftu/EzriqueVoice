@@ -28,7 +28,9 @@ fun isInDocker(): Boolean {
         val path = Path.of(filePath)
 
         // Check if the file exists
-        Files.exists(path, LinkOption.NOFOLLOW_LINKS)
+        if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
+            return@any true
+        }
 
         // Check if "docker" is in the file
         Files.readAllLines(path).any { line ->
