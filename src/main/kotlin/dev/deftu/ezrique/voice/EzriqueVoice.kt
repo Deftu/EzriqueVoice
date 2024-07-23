@@ -70,7 +70,7 @@ suspend fun main() {
 
     logger.info("Setting up Sentry")
     Sentry.init { options ->
-        options.dsn = "https://a8bef282a10087aea3e04095ad3e281e@o1228118.ingest.sentry.io/4506714187366400"
+        options.dsn = "https://5c923af506fc13f192ba46b0139998ba@o4507651506569216.ingest.de.sentry.io/4507651509059664"
         options.release = "${NAME}@${VERSION}"
     }
 
