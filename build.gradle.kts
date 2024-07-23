@@ -11,27 +11,7 @@ plugins {
 }
 
 repositories {
-    maven("https://maven.deftu.dev/internal") {
-        fun getPublishingUsername(): String? {
-            val property = project.findProperty("deftu.publishing.username")
-            return property?.toString() ?: System.getenv("DEFTU_PUBLISHING_USERNAME")
-        }
-
-        fun getPublishingPassword(): String? {
-            val property = project.findProperty("deftu.publishing.password")
-            return property?.toString() ?: System.getenv("DEFTU_PUBLISHING_PASSWORD")
-        }
-
-        val publishingUsername = getPublishingUsername()
-        val publishingPassword = getPublishingPassword()
-        if (publishingUsername != null && publishingPassword != null) {
-            credentials {
-                username = publishingUsername
-                password = publishingPassword
-            }
-        }
-    }
-
+    maven("https://maven.deftu.dev/internal-exposed")
     maven("https://m2.dv8tion.net/releases")
 }
 
