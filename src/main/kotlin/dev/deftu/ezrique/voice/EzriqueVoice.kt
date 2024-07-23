@@ -75,7 +75,7 @@ suspend fun main() {
     }
 
     try {
-        logger.info("Setting up database")
+        logger.info("Setting up database (url: '$dbUrl', passed url: 'jdbc:postgresql://$dbUrl', pass: '${dbPassword.take(4) + "*".repeat(dbPassword.length - 4)}')")
         Database.connect(
             driver = "org.postgresql.Driver",
             databaseConfig = DatabaseConfig {
