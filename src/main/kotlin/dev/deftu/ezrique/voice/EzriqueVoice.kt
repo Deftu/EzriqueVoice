@@ -77,13 +77,15 @@ suspend fun main() {
     try {
         logger.info("Setting up database")
         Database.connect(
-            url = dbUrl,
-            user = "ezrique_voice",
-            password = dbPassword,
             driver = "org.postgresql.Driver",
             databaseConfig = DatabaseConfig {
                 useNestedTransactions = true
-            }
+            },
+
+            url = dbUrl,
+
+            user = "ezrique_voice",
+            password = dbPassword
         )
 
         transaction {

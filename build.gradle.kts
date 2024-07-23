@@ -2,11 +2,10 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
     java
-    kotlin("jvm") version("1.9.10")
-    val dgt = "1.22.4"
+    kotlin("jvm") version("2.0.0")
+    val dgt = "2.2.3"
     id("dev.deftu.gradle.tools") version(dgt)
     id("dev.deftu.gradle.tools.blossom") version(dgt)
-    id("dev.deftu.gradle.tools.maven-publishing") version(dgt)
     id("dev.deftu.gradle.tools.shadow") version(dgt)
 }
 
