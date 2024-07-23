@@ -57,12 +57,13 @@ object TtsHandler {
         }
 
         kord.on<MessageCreateEvent> {
+            val author = message.author ?: return@on
             val guild = getGuildOrNull() ?: return@on
 
             if (
                 message.author?.isBot == true ||
                 !GuildConfig.isTtsEnabled(guild.id.value.toLong()) ||
-                !MemberConfig.isTtsEnabled(message.author!!.id.value.toLong()) ||
+                !MemberConfig.isTtsEnabled(author.id.value.toLong()) ||
                 message.content.startsWith(textBypass())
             ) return@on
 
