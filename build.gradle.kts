@@ -32,7 +32,7 @@ tasks {
     jar {
         enabled = false
         manifest.attributes(
-            "Main-Class" to "dev.deftu.ezrique.voice.EzriqueVoiceKt"
+            "Main-Class" to "dev.deftu.ezrique.voice.EzriqueVoice"
         )
     }
 
