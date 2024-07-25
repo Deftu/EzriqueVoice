@@ -1,5 +1,5 @@
 # Build
-FROM openjdk:17-alpine as builder
+FROM openjdk:21-jdk-oracle as builder
 
 ## Set up our working directory
 ENV APP_HOME=/app
@@ -17,7 +17,7 @@ COPY src $APP_HOME/src
 RUN ./gradlew build
 
 # Run
-FROM gcr.io/distroless/java17-debian11
+FROM openjdk:21-jdk-oracle
 
 ## Set up our working directory
 ENV APP_HOME=/app
