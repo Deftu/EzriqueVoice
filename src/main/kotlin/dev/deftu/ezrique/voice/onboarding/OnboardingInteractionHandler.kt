@@ -1,6 +1,6 @@
 package dev.deftu.ezrique.voice.onboarding
 
-import dev.deftu.ezrique.voice.NAME
+import dev.deftu.ezrique.voice.EzriqueVoice
 import dev.deftu.ezrique.voice.sql.GuildConfig
 import dev.deftu.ezrique.voice.utils.*
 import dev.kord.common.Color
@@ -22,11 +22,12 @@ import dev.kord.rest.builder.message.actionRow
 import dev.kord.rest.builder.message.embed
 
 object OnboardingInteractionHandler : InteractionHandler {
+
     private val messages = mutableMapOf(
-        OnboardingStep.SETUP_FEATURES to "Welcome to the onboarding process! This will guide you through setting up $NAME for your server. First up, we need to pick out which features you want to use.",
+        OnboardingStep.SETUP_FEATURES to "Welcome to the onboarding process! This will guide you through setting up ${EzriqueVoice.NAME} for your server. First up, we need to pick out which features you want to use.",
         OnboardingStep.TTS_SETUP to "You've chosen to use the text-to-speech features. You can now optionally decide to link a text channel to a voice channel for TTS messages, otherwise messages which are sent in the voice channel will be read out. Both channels' text contents can be read out at the same time, so you can have a dedicated TTS channel or use the voice channel's text channel.\nYou can link channels using the `/tts settings link` command.",
         OnboardingStep.MUSIC_SETUP to "Now that you've chosen to use music features, you can now optionally pick a DJ role and only allows DJs to use music commands.",
-        OnboardingStep.DONE to "You're all set up! Enjoy using $NAME!"
+        OnboardingStep.DONE to "You're all set up! Enjoy using ${EzriqueVoice.NAME}!"
     )
 
     override val name = "onboarding"
@@ -210,4 +211,5 @@ object OnboardingInteractionHandler : InteractionHandler {
             }
         }
     }
+
 }

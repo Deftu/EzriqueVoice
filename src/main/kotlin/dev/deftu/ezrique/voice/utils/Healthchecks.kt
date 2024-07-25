@@ -8,14 +8,21 @@ import io.ktor.server.routing.*
 
 object Healthchecks {
 
+    private var server: NettyApplicationEngine? = null
+
     fun start() {
-        embeddedServer(Netty, port = 6139) {
+        server = embeddedServer(Netty, port = 6139) {
             routing {
                 get("/health") {
                     call.respondText("OK")
                 }
             }
         }.start(wait = false)
+    }
+
+    fun close() {
+        server?.stop(1000, 1000)
+        server = null
     }
 
 }

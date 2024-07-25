@@ -5,7 +5,7 @@ import com.sedmelluq.discord.lavaplayer.tools.FriendlyException
 import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack
 import dev.deftu.ezrique.voice.audio.DefaultTrackScheduler
-import dev.deftu.ezrique.voice.audio.GuildPlayer
+import dev.deftu.ezrique.voice.audio.TrackManager
 import dev.kord.common.Color
 import dev.kord.core.behavior.interaction.response.DeferredEphemeralMessageInteractionResponseBehavior
 import dev.kord.core.behavior.interaction.response.respond
@@ -13,7 +13,7 @@ import dev.kord.rest.builder.message.embed
 import kotlinx.coroutines.runBlocking
 
 class YouTubeAudioLoadResultHandler(
-    private val player: GuildPlayer<DefaultTrackScheduler>,
+    private val player: TrackManager<DefaultTrackScheduler>,
     private val response: DeferredEphemeralMessageInteractionResponseBehavior
 ) : AudioLoadResultHandler {
     override fun trackLoaded(track: AudioTrack) {

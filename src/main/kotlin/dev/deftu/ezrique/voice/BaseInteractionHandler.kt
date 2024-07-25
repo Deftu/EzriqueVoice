@@ -92,7 +92,7 @@ object BaseInteractionHandler : InteractionHandler {
             return
         }
 
-        val connection = VoiceHandler.getVoiceConnection(guild.id)
+        val connection = VoiceConnectionManager.getConnection(guild.id)
         if (connection != null) {
             response.respond {
                 errorEmbed {
@@ -103,7 +103,7 @@ object BaseInteractionHandler : InteractionHandler {
             return
         }
 
-        VoiceHandler.setVoiceChannel(guild.id, channel, event.shard)
+        VoiceConnectionManager.connectTo(event.kord, event.shard, guild.id, channel)
         response.respond {
             successEmbed {
                 description = "Joined ${channel.mention}!"
@@ -151,7 +151,7 @@ object BaseInteractionHandler : InteractionHandler {
             return
         }
 
-        val didLeave = VoiceHandler.leaveVoiceChannel(guild.id)
+        val didLeave = VoiceConnectionManager.leave(event.kord, event.shard, guild.id)
         response.respond {
             if (didLeave) {
                 successEmbed {
@@ -178,13 +178,13 @@ object BaseInteractionHandler : InteractionHandler {
 
                 field {
                     name = "Version"
-                    value = VERSION
+                    value = EzriqueVoice.VERSION
                     inline = true
                 }
 
                 field {
                     name = "Guild Count"
-                    value = "${dev.deftu.ezrique.voice.kord.guilds.count()}"
+                    value = "${event.kord.guilds.count()}"
                     inline = true
                 }
             }

@@ -1,6 +1,6 @@
 package dev.deftu.ezrique.voice.utils
 
-import dev.deftu.ezrique.voice.audio.GuildPlayer
+import dev.deftu.ezrique.voice.audio.TrackManager
 import dev.deftu.ezrique.voice.audio.TrackScheduler
 import dev.deftu.ezrique.voice.sql.GuildConfig
 import dev.kord.common.Color
@@ -95,10 +95,10 @@ fun MessageBuilder.errorEmbed(
     }
 }
 
-suspend fun <T : TrackScheduler> Map<Snowflake, GuildPlayer<T>>.getPlayer(
+suspend fun <T : TrackScheduler> Map<Snowflake, TrackManager<T>>.getPlayer(
     guildId: Long,
     response: DeferredEphemeralMessageInteractionResponseBehavior? = null
-): GuildPlayer<T>? {
+): TrackManager<T>? {
     val player = this[Snowflake(guildId)]
     if (player == null && response != null) {
         response.respond {

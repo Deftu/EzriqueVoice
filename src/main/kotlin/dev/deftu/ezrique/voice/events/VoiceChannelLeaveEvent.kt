@@ -5,7 +5,7 @@ import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import dev.kord.core.event.Event
 
-data class VoiceChannelJoinEvent @KordPreview constructor(
+data class VoiceChannelLeaveEvent @KordPreview constructor(
     override val kord: Kord,
     @KordPreview override val customContext: Any?,
     override val shard: Int,

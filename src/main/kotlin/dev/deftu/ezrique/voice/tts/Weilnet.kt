@@ -2,13 +2,13 @@ package dev.deftu.ezrique.voice.tts
 
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import dev.deftu.ezrique.voice.gson
-import okhttp3.MediaType.Companion.toMediaType
+import dev.deftu.ezrique.voice.EzriqueVoice
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
 object Weilnet {
+
     private const val BASE_URL = "https://tiktok-tts.weilnet.workers.dev"
     private val httpClient = OkHttpClient.Builder()
         .build()
@@ -18,7 +18,7 @@ object Weilnet {
         text: String,
         voice: Voice
     ): String {
-        val jsonBody = gson.toJson(JsonObject().apply {
+        val jsonBody = EzriqueVoice.GSON.toJson(JsonObject().apply {
             addProperty("text", text)
             addProperty("voice", voice.code)
         })
@@ -40,4 +40,5 @@ object Weilnet {
             throw IllegalStateException(json.get("error").asString)
         } else throw IllegalStateException("Unknown error!")
     }
+
 }
