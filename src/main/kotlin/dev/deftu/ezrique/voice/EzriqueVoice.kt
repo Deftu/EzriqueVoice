@@ -114,11 +114,6 @@ object EzriqueVoice {
                     +Intents.NON_PRIVILEGED
                     +Intent.MessageContent
                 }
-
-                presence {
-                    status = PresenceStatus.DoNotDisturb
-                    listening("your voice channels in ${kord.guilds.count()} guilds")
-                }
             }
         } catch (e: Exception) {
             handleError(e, ErrorCode.KORD_LOGIN)
@@ -248,7 +243,7 @@ object EzriqueVoice {
                             presence(kord)
 
                             // Every presence change, flip between ONLINE and DND
-                            status = if (status == PresenceStatus.Online) PresenceStatus.DoNotDisturb else PresenceStatus.Online
+                            status = if (presenceIndex % 2 == 0) PresenceStatus.Online else PresenceStatus.DoNotDisturb
                         }
                     }
                 }
