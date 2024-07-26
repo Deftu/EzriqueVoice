@@ -71,7 +71,15 @@ object TtsHandler {
                 message.content.startsWith(textBypass())
             ) return@on
 
-            val channel = member?.getVoiceStateOrNull()?.getChannelOrNull() ?: return@on
+            LOGGER.debug("TTS Message - TTS is enabled for the guild and user.")
+
+            val voiceState = member?.getVoiceStateOrNull()
+
+            LOGGER.debug("TTS Message - User has a known voice state.")
+
+            val channel = voiceState
+                ?.getChannelOrNull()
+                ?: return@on
 
             LOGGER.debug("TTS Message - User is in a voice channel.")
 

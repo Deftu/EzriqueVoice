@@ -95,8 +95,8 @@ object EzriqueVoice {
         setupKordListeners()
         setupInteractionListeners()
 
-        OnboardingHandler.setup()
         VoiceConnectionManager.setup(kord)
+        OnboardingHandler.setup(kord)
         TtsHandler.setup(kord)
         MusicHandler.setup(kord)
 
