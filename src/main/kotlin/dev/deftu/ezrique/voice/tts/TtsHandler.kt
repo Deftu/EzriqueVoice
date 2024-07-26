@@ -32,6 +32,8 @@ private const val DEFAULT_TEXT_BYPASS = ";"
 
 object TtsHandler {
 
+    private val LOGGER = LoggerFactory.getLogger("${EzriqueVoice.NAME} TTS Handler")
+
     private val guildPlayers = mutableMapOf<Snowflake, TrackManager<TtsTrackScheduler>>()
     private val playerManager = DefaultAudioPlayerManager().apply {
         registerSourceManager(ByteArrayAudioSourceManager())
@@ -71,17 +73,33 @@ object TtsHandler {
 
             val channel = member?.getVoiceStateOrNull()?.getChannelOrNull() ?: return@on
 
+            LOGGER.debug("TTS Message - User is in a voice channel.")
+
             if (!VoiceConnectionManager.isConnected(guild.id)) return@on
-            if (!ChannelLink.isPresent(
+
+            LOGGER.debug("TTS Message - Bot is connected to user's voice channel.")
+
+            if (
+                !ChannelLink.isPresent(
                     message.channelId.value.toLong(),
                     channel.id.value.toLong()
-                ) && channel.id != message.channelId) return@on
+                ) &&
+                channel.id != message.channelId
+            ) return@on
+
+            LOGGER.debug("TTS Message - Channel is linked to user's voice channel.")
 
             val voice = MemberConfig.getVoice(author.id.value.toLong())
             val player = guildPlayers[guild.id] ?: return@on
 
+            LOGGER.debug("TTS Message - Player is ready.")
+
             val parsedText = parseMessage(guild, message.content)
-            parsedText.chunked(300).forEach { chunk ->
+            val chunkedText = parsedText.chunked(300)
+
+            LOGGER.debug("TTS Message - Text is parsed and has been split into ${chunkedText.size} chunks.")
+
+            chunkedText.forEach { chunk ->
                 val data = try {
                     Weilnet.tts(chunk, voice)
                 } catch (e: Exception) {
