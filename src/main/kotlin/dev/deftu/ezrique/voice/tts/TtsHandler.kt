@@ -1,7 +1,5 @@
 package dev.deftu.ezrique.voice.tts
 
-import com.sedmelluq.discord.lavaplayer.format.StandardAudioDataFormats
-import com.sedmelluq.discord.lavaplayer.player.AudioConfiguration
 import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager
 import com.sedmelluq.discord.lavaplayer.tools.FriendlyException
@@ -17,19 +15,18 @@ import dev.deftu.ezrique.voice.events.VoiceChannelLeaveEvent
 import dev.deftu.ezrique.voice.sql.ChannelLink
 import dev.deftu.ezrique.voice.sql.GuildConfig
 import dev.deftu.ezrique.voice.sql.MemberConfig
+import dev.deftu.ezrique.voice.utils.*
 import dev.deftu.ezrique.voice.utils.ErrorCode
-import dev.deftu.ezrique.voice.utils.getPlayer
-import dev.deftu.ezrique.voice.utils.handleError
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.DeferredEphemeralMessageInteractionResponseBehavior
 import dev.kord.core.entity.Guild
 import dev.kord.core.event.message.MessageCreateEvent
 import dev.kord.core.on
-import io.ktor.utils.io.core.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import org.slf4j.LoggerFactory
 
 private const val DEFAULT_TEXT_BYPASS = ";"
 
@@ -38,12 +35,7 @@ object TtsHandler {
     private val guildPlayers = mutableMapOf<Snowflake, TrackManager<TtsTrackScheduler>>()
     private val playerManager = DefaultAudioPlayerManager().apply {
         registerSourceManager(ByteArrayAudioSourceManager())
-        configuration.resamplingQuality = AudioConfiguration.ResamplingQuality.HIGH
-        configuration.outputFormat = when (ByteOrder.nativeOrder()) {
-            ByteOrder.BIG_ENDIAN -> StandardAudioDataFormats.DISCORD_PCM_S16_LE
-            ByteOrder.LITTLE_ENDIAN -> StandardAudioDataFormats.DISCORD_PCM_S16_BE
-            else -> throw IllegalStateException("Unknown byte order: ${ByteOrder.nativeOrder()}")
-        }
+        configure()
     }
 
     fun setup(kord: Kord) {
@@ -53,18 +45,13 @@ object TtsHandler {
 
     private fun setupVoiceListeners(kord: Kord) {
         kord.on<VoiceChannelJoinEvent> {
-            val audioPlayer = playerManager.createPlayer()
-            val scheduler = TtsTrackScheduler(audioPlayer)
-            audioPlayer.addListener(scheduler)
-
-            val player = TrackManager(audioPlayer, scheduler)
-            guildPlayers[guildId] = player
-            AudioOutputManager.registerPlayer(guildId, player)
+            handleJoin(playerManager, guildPlayers) { player ->
+                TtsTrackScheduler(player)
+            }
         }
 
         kord.on<VoiceChannelLeaveEvent> {
-            val player = guildPlayers.remove(guildId) ?: return@on
-            AudioOutputManager.unregisterPlayer(guildId, player)
+            handleLeave(guildPlayers)
         }
     }
 
@@ -74,9 +61,9 @@ object TtsHandler {
         kord.on<MessageCreateEvent> {
             val author = message.author ?: return@on
             val guild = getGuildOrNull() ?: return@on
+            if (message.author?.isBot == true) return@on
 
             if (
-                message.author?.isBot == true ||
                 !GuildConfig.isTtsEnabled(guild.id.value.toLong()) ||
                 !MemberConfig.isTtsEnabled(author.id.value.toLong()) ||
                 message.content.startsWith(textBypass())
@@ -109,10 +96,8 @@ object TtsHandler {
                     return@forEach
                 }
 
-                println("Playing TTS for ${author.username} in ${guild.name}: $chunk")
                 playerManager.loadItem(data, object : AudioLoadResultHandler {
                     override fun trackLoaded(track: AudioTrack) {
-                        println("Loaded TTS for ${author.username} in ${guild.name}: $chunk")
                         player.scheduler.queue(message.id, track)
                     }
 
