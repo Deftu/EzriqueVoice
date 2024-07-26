@@ -1,5 +1,7 @@
 [versions]
-core = "0.3.0"
+ezrique-core = "0.3.0"
 kord = "0.14.0"
+pcm-audio-utils = "0.1.0"
 lavaplayer = "2.2.1"
+lavalink-youtube = "1.4.0"
 ktor = "2.3.12"
