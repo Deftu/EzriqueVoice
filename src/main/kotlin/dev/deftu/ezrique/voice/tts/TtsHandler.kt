@@ -67,11 +67,14 @@ object TtsHandler {
 
             if (
                 !GuildConfig.isTtsEnabled(guild.id.value.toLong()) ||
-                !MemberConfig.isTtsEnabled(author.id.value.toLong()) ||
-                message.content.startsWith(textBypass())
+                !MemberConfig.isTtsEnabled(author.id.value.toLong())
             ) return@on
 
             LOGGER.debug("TTS Message - TTS is enabled for the guild and user.")
+
+            if (message.content.startsWith(textBypass())) return@on
+
+            LOGGER.debug("TTS Message - Message does not start with the text bypass.")
 
             val voiceState = member?.getVoiceStateOrNull()
 
