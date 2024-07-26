@@ -11,7 +11,7 @@ plugins {
 
 repositories {
     maven("https://maven.deftu.dev/internal-exposed")
-    maven(url = "https://maven.lavalink.dev/releases")
+    maven("https://maven.lavalink.dev/releases")
     maven("https://m2.dv8tion.net/releases")
 }
 
@@ -19,13 +19,12 @@ dependencies {
     shade(implementation("dev.deftu:ezrique-core:${libs.versions.core.get()}")!!)
     shade(implementation("dev.kord:kord-core-voice:${libs.versions.kord.get()}")!!)
     shade(implementation("dev.kord:kord-voice:${libs.versions.kord.get()}")!!)
+    shade(implementation("dev.deftu:pcm-audio-utils:0.1.0")!!)
     shade(implementation("dev.arbjerg:lavaplayer:${libs.versions.lavaplayer.get()}")!!)
     shade(implementation("dev.lavalink.youtube:common:1.4.0")!!)
 
     shade(implementation("io.ktor:ktor-server-core:${libs.versions.ktor.get()}")!!)
     shade(implementation("io.ktor:ktor-server-netty:${libs.versions.ktor.get()}")!!)
-
-    implementation("dev.deftu:pcm-audio-utils:0.1.0")
 }
 
 tasks {
