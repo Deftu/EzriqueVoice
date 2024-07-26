@@ -76,7 +76,7 @@ object TtsHandler {
 
             LOGGER.debug("TTS Message - Message does not start with the text bypass.")
 
-            val voiceState = member?.getVoiceStateOrNull()
+            val voiceState = member?.getVoiceStateOrNull() ?: return@on
 
             LOGGER.debug("TTS Message - User has a known voice state.")
 

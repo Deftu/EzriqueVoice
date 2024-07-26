@@ -15,7 +15,9 @@ enum class ErrorCode(
 
     DATABASE_CONNECTION,
     KORD_SETUP,
-    KORD_LOGIN;
+    KORD_LOGIN,
+
+    DATABASE_QUERY;
 
     override val code: Int
         get() = if (_code == -1) ordinal else _code
