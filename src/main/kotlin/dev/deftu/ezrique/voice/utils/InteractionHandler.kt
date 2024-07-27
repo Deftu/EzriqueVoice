@@ -8,6 +8,7 @@ import dev.kord.core.event.interaction.SelectMenuInteractionCreateEvent
 import dev.kord.rest.builder.interaction.GlobalMultiApplicationCommandBuilder
 
 interface InteractionHandler {
+
     val name: String
 
     fun setupCommands(builder: GlobalMultiApplicationCommandBuilder) {

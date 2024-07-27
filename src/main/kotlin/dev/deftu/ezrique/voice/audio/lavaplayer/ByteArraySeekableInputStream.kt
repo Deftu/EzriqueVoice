@@ -1,4 +1,4 @@
-package dev.deftu.ezrique.voice.audio.lavaplayer.raw
+package dev.deftu.ezrique.voice.audio.lavaplayer
 
 import com.sedmelluq.discord.lavaplayer.tools.io.ExtendedBufferedInputStream
 import com.sedmelluq.discord.lavaplayer.tools.io.SeekableInputStream
@@ -7,6 +7,7 @@ import com.sedmelluq.discord.lavaplayer.track.info.AudioTrackInfoProvider
 class ByteArraySeekableInputStream(
     bytes: ByteArray
 ) : SeekableInputStream(bytes.size.toLong(), 0) {
+
     private val internalStream = bytes.inputStream()
     private val bufferedStream = ExtendedBufferedInputStream(internalStream)
 
@@ -43,4 +44,5 @@ class ByteArraySeekableInputStream(
         this.position = position
         bufferedStream.discardBuffer()
     }
+
 }

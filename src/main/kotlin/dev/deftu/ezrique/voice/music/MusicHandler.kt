@@ -1,8 +1,8 @@
 package dev.deftu.ezrique.voice.music
 
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager
-import dev.deftu.ezrique.voice.audio.DefaultTrackScheduler
-import dev.deftu.ezrique.voice.audio.TrackManager
+import dev.deftu.ezrique.voice.audio.GuildAudioManager
+import dev.deftu.ezrique.voice.audio.scheduler.DefaultTrackScheduler
 import dev.deftu.ezrique.voice.events.VoiceChannelJoinEvent
 import dev.deftu.ezrique.voice.events.VoiceChannelLeaveEvent
 import dev.deftu.ezrique.voice.utils.configure
@@ -17,7 +17,7 @@ import dev.lavalink.youtube.YoutubeAudioSourceManager
 
 object MusicHandler {
 
-    private val guildPlayers = mutableMapOf<Snowflake, TrackManager<DefaultTrackScheduler>>()
+    private val guildManagers = mutableMapOf<Snowflake, GuildAudioManager<DefaultTrackScheduler>>()
     private val playerManager = DefaultAudioPlayerManager().apply {
         registerSourceManager(YoutubeAudioSourceManager())
         configure()
@@ -25,25 +25,25 @@ object MusicHandler {
 
     fun setup(kord: Kord) {
         kord.on<VoiceChannelJoinEvent> {
-            handleJoin(playerManager, guildPlayers) { player ->
+            handleJoin(playerManager, guildManagers) { player ->
                 DefaultTrackScheduler(player)
             }
         }
 
         kord.on<VoiceChannelLeaveEvent> {
-            handleLeave(guildPlayers)
+            handleLeave(guildManagers)
         }
     }
 
     fun playFromYouTube(
         input: String,
-        player: TrackManager<DefaultTrackScheduler>,
+        player: GuildAudioManager<DefaultTrackScheduler>,
         response: DeferredEphemeralMessageInteractionResponseBehavior
     ) = playerManager.loadItem(input, YouTubeAudioLoadResultHandler(player, response))
 
     suspend fun getPlayer(
         guildId: Long,
         response: DeferredEphemeralMessageInteractionResponseBehavior? = null
-    ) = guildPlayers.getPlayer(guildId, response)
+    ) = guildManagers.getPlayer(guildId, response)
 
 }

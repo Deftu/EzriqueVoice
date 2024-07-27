@@ -1,5 +1,9 @@
 package dev.deftu.ezrique.voice.music
 
+import dev.deftu.ezrique.EmbedState
+import dev.deftu.ezrique.handleError
+import dev.deftu.ezrique.stateEmbed
+import dev.deftu.ezrique.voice.VoiceErrorCode
 import dev.deftu.ezrique.voice.sql.GuildConfig
 import dev.deftu.ezrique.voice.utils.*
 import dev.kord.common.Color
@@ -12,8 +16,10 @@ import dev.kord.core.entity.Member
 import dev.kord.core.event.interaction.ChatInputCommandInteractionCreateEvent
 import dev.kord.rest.builder.interaction.*
 import dev.kord.rest.builder.message.embed
+import java.util.concurrent.TimeUnit
 
 object MusicInteractionHandler : InteractionHandler {
+
     override val name = "music"
 
     override fun setupCommands(builder: GlobalMultiApplicationCommandBuilder) {
@@ -134,13 +140,13 @@ object MusicInteractionHandler : InteractionHandler {
         val newValue = event.interaction.command.booleans["value"] ?: !GuildConfig.isMusicEnabled(guild.id.get())
         val currentValue = try {
             GuildConfig.setMusicEnabled(guild.id.get(), newValue)
-        } catch (e: Exception) {
-            handleError(response, ErrorCode.SET_MUSIC_TOGGLE_GUILD, e)
+        } catch (t: Throwable) {
+            handleError(t, VoiceErrorCode.SET_MUSIC_TOGGLE_GUILD, response = response)
             return
         }
 
         response.respond {
-            successEmbed {
+            stateEmbed(EmbedState.SUCCESS) {
                 description = "Music is now ${if (currentValue) "enabled" else "disabled"}. in your server!"
             }
         }
@@ -160,13 +166,13 @@ object MusicInteractionHandler : InteractionHandler {
         val newValue = event.interaction.command.booleans["enabled"] ?: !GuildConfig.isDjOnly(guild.id.get())
         val currentValue = try {
             GuildConfig.setDjOnly(guild.id.get(), newValue)
-        } catch (e: Exception) {
-            handleError(response, ErrorCode.SET_MUSIC_DJ_ONLY_GUILD, e)
+        } catch (t: Throwable) {
+            handleError(t, VoiceErrorCode.SET_MUSIC_DJ_ONLY_GUILD, response)
             return
         }
 
         response.respond {
-            successEmbed {
+            stateEmbed(EmbedState.SUCCESS) {
                 description = "DJ only mode is now ${if (currentValue) "enabled" else "disabled"}. in your server!"
             }
         }
@@ -187,13 +193,13 @@ object MusicInteractionHandler : InteractionHandler {
 
         try {
             GuildConfig.setDjRole(guild.id.get(), role.id.get())
-        } catch (e: Exception) {
-            handleError(response, ErrorCode.SET_MUSIC_DJ_ROLE_GUILD, e)
+        } catch (t: Throwable) {
+            handleError(t, VoiceErrorCode.SET_MUSIC_DJ_ROLE_GUILD, response)
             return
         }
 
         response.respond {
-            successEmbed {
+            stateEmbed(EmbedState.SUCCESS) {
                 description = "DJ role is now ${role.mention}!"
             }
         }
@@ -209,16 +215,16 @@ object MusicInteractionHandler : InteractionHandler {
         when (subCommandName) {
             "remove" -> handleBaseRemove(event, member, response, guild)
             "youtube" -> handleBaseYouTube(event, member, response, guild)
-            "soundcloud" -> handleBaseSoundCloud(event, member, response, guild)
-            "spotify" -> handleBaseSpotify(event, member, response, guild)
+            "soundcloud" -> handleBaseSoundCloud(member, response, guild)
+            "spotify" -> handleBaseSpotify(member, response, guild)
             "volume" -> handleBaseVolume(event, member, response, guild)
             "seek" -> handleBaseSeek(event, member, response, guild)
-            "loop" -> handleBaseLoop(event, member, response, guild)
-            "queue" -> handleBaseQueue(event, member, response, guild)
-            "resume" -> handleBaseResume(event, member, response, guild)
-            "pause" -> handleBasePause(event, member, response, guild)
-            "skip" -> handleBaseSkip(event, member, response, guild)
-            "clear" -> handleBaseClear(event, member, response, guild)
+            "loop" -> handleBaseLoop(member, response, guild)
+            "queue" -> handleBaseQueue(response, guild)
+            "resume" -> handleBaseResume(member, response, guild)
+            "pause" -> handleBasePause(member, response, guild)
+            "skip" -> handleBaseSkip(member, response, guild)
+            "clear" -> handleBaseClear(member, response, guild)
         }
     }
 
@@ -234,7 +240,7 @@ object MusicInteractionHandler : InteractionHandler {
         val player = MusicHandler.getPlayer(guild.id.get(), response) ?: return
         if (index < 1 || index > player.scheduler.getQueueSize()) {
             response.respond {
-                errorEmbed {
+                stateEmbed(EmbedState.ERROR) {
                     description = "There is no track at index `$index`! Please enter a value between 1 and ${player.scheduler.getQueueSize()}."
                 }
             }
@@ -243,21 +249,21 @@ object MusicInteractionHandler : InteractionHandler {
         }
 
 
-        val track = try {
-            player.scheduler.removeTrack(index + 1)
-        } catch (e: Exception) {
-            handleError(response, ErrorCode.REMOVE_MUSIC_TRACK_GUILD, e)
+        val entry = try {
+            player.scheduler.removeAt(index + 1)
+        } catch (t: Throwable) {
+            handleError(t, VoiceErrorCode.REMOVE_MUSIC_TRACK_GUILD, response)
             return
         }
 
         response.respond {
-            if (track == null) {
-                errorEmbed {
+            if (entry == null) {
+                stateEmbed(EmbedState.ERROR) {
                     description = "There is no track at index `$index`!"
                 }
             } else {
-                successEmbed {
-                    description = "Removed track `${track.info.title}` from the queue!"
+                stateEmbed(EmbedState.SUCCESS) {
+                    description = "Removed track `${entry.track.info.title}` from the queue!"
                 }
             }
         }
@@ -272,7 +278,7 @@ object MusicInteractionHandler : InteractionHandler {
         if (!member.checkDj(guild, response)) return
 
         val videoIdRegex = Regex("^[a-zA-Z0-9_-]{11}$")
-        val videoUrlRegex = Regex("^(?:https?:\\/\\/)?(?:www\\.)?(?:youtube\\.com\\/watch\\?v=|youtu\\.be\\/)([a-zA-Z0-9_-]{11})")
+        val videoUrlRegex = Regex("^(?:https?://)?(?:www\\.)?(?:youtube\\.com/watch\\?v=|youtu\\.be/)([a-zA-Z0-9_-]{11})")
 
         val query = event.interaction.command.strings["query"]!!
         val player = MusicHandler.getPlayer(guild.id.get(), response) ?: return
@@ -282,13 +288,12 @@ object MusicInteractionHandler : InteractionHandler {
 
         try {
             MusicHandler.playFromYouTube(input, player, response)
-        } catch (e: Exception) {
-            handleError(response, ErrorCode.LOAD_AND_PLAY_MUSIC, e)
+        } catch (t: Throwable) {
+            handleError(t, VoiceErrorCode.LOAD_AND_PLAY_MUSIC, response)
         }
     }
 
     private suspend fun handleBaseSoundCloud(
-        event: ChatInputCommandInteractionCreateEvent,
         member: Member,
         response: DeferredEphemeralMessageInteractionResponseBehavior,
         guild: Guild
@@ -305,7 +310,6 @@ object MusicInteractionHandler : InteractionHandler {
     }
 
     private suspend fun handleBaseSpotify(
-        event: ChatInputCommandInteractionCreateEvent,
         member: Member,
         response: DeferredEphemeralMessageInteractionResponseBehavior,
         guild: Guild
@@ -337,7 +341,7 @@ object MusicInteractionHandler : InteractionHandler {
         val volume = event.interaction.command.integers["volume"]!!.toInt()
         if (volume < 0 || volume > 100) {
             response.respond {
-                errorEmbed {
+                stateEmbed(EmbedState.ERROR) {
                     description = "Please enter a value between 0 and 100!"
                 }
             }
@@ -349,13 +353,13 @@ object MusicInteractionHandler : InteractionHandler {
 
         try {
             player.player.volume = volume
-        } catch (e: Exception) {
-            handleError(response, ErrorCode.SET_MUSIC_VOLUME_GUILD, e)
+        } catch (t: Throwable) {
+            handleError(t, VoiceErrorCode.SET_MUSIC_VOLUME_GUILD, response)
             return
         }
 
         response.respond {
-            successEmbed {
+            stateEmbed(EmbedState.SUCCESS) {
                 description = "Set the volume to `$volume`!"
             }
         }
@@ -371,10 +375,10 @@ object MusicInteractionHandler : InteractionHandler {
 
         val position = event.interaction.command.integers["position"]!!.toLong()
         val player = MusicHandler.getPlayer(guild.id.get(), response) ?: return
-        val track = player.scheduler.getCurrentTrack()
-        if (track == null) {
+        val entry = player.scheduler.current
+        if (entry == null) {
             response.respond {
-                errorEmbed {
+                stateEmbed(EmbedState.ERROR) {
                     description = "There is no track currently playing!"
                 }
             }
@@ -382,10 +386,11 @@ object MusicInteractionHandler : InteractionHandler {
             return
         }
 
-        if (position < 0 || position > (track.duration / 1000)) {
+        val durationInSeconds = player.scheduler.getDuration(TimeUnit.SECONDS)
+        if (position < 0 || position > durationInSeconds) {
             response.respond {
-                errorEmbed {
-                    description = "Please enter a value between 0 and ${track.duration / 1000}!"
+                stateEmbed(EmbedState.ERROR) {
+                    description = "Please enter a value between 0 and $durationInSeconds!"
                 }
             }
 
@@ -393,21 +398,21 @@ object MusicInteractionHandler : InteractionHandler {
         }
 
         try {
-            player.scheduler.seekTo(position)
-        } catch (e: Exception) {
-            handleError(response, ErrorCode.SET_MUSIC_VOLUME_GUILD, e)
+            val adjustedPosition = TimeUnit.MILLISECONDS.convert(position, TimeUnit.SECONDS)
+            player.scheduler.seekTo(adjustedPosition)
+        } catch (t: Throwable) {
+            handleError(t, VoiceErrorCode.SET_MUSIC_VOLUME_GUILD, response)
             return
         }
 
         response.respond {
-            successEmbed {
+            stateEmbed(EmbedState.SUCCESS) {
                 description = "Seeked to `$position`!"
             }
         }
     }
 
     private suspend fun handleBaseLoop(
-        event: ChatInputCommandInteractionCreateEvent,
         member: Member,
         response: DeferredEphemeralMessageInteractionResponseBehavior,
         guild: Guild,
@@ -415,10 +420,10 @@ object MusicInteractionHandler : InteractionHandler {
         if (!member.checkDj(guild, response)) return
 
         val player = MusicHandler.getPlayer(guild.id.get(), response) ?: return
-        val track = player.scheduler.getCurrentTrack()
-        if (track == null) {
+        val entry = player.scheduler.current
+        if (entry == null) {
             response.respond {
-                errorEmbed {
+                stateEmbed(EmbedState.ERROR) {
                     description = "There is no track currently playing!"
                 }
             }
@@ -427,22 +432,21 @@ object MusicInteractionHandler : InteractionHandler {
         }
 
         try {
-            player.scheduler.loop()
-        } catch (e: Exception) {
-            handleError(response, ErrorCode.SET_MUSIC_VOLUME_GUILD, e)
+            player.scheduler.isLooping = !player.scheduler.isLooping
+        } catch (t: Throwable) {
+            handleError(t, VoiceErrorCode.SET_MUSIC_VOLUME_GUILD, response)
             return
         }
 
         response.respond {
-            successEmbed {
+            stateEmbed(EmbedState.SUCCESS) {
+                val track = entry.track
                 description = "Now looping [${track.info.title}](${track.info.uri})!"
             }
         }
     }
 
     private suspend fun handleBaseQueue(
-        event: ChatInputCommandInteractionCreateEvent,
-        member: Member,
         response: DeferredEphemeralMessageInteractionResponseBehavior,
         guild: Guild,
     ) {
@@ -464,7 +468,8 @@ object MusicInteractionHandler : InteractionHandler {
                         return@buildString
                     }
 
-                    queue.forEachIndexed { index, track ->
+                    queue.forEachIndexed { index, entry ->
+                        val track = entry.track
                         appendLine("${index + 1}. [${track.info.title}](${track.info.uri})")
                     }
                 }
@@ -473,7 +478,6 @@ object MusicInteractionHandler : InteractionHandler {
     }
 
     private suspend fun handleBaseResume(
-        event: ChatInputCommandInteractionCreateEvent,
         member: Member,
         response: DeferredEphemeralMessageInteractionResponseBehavior,
         guild: Guild,
@@ -484,14 +488,13 @@ object MusicInteractionHandler : InteractionHandler {
         player.scheduler.setPaused(false)
 
         response.respond {
-            successEmbed {
+            stateEmbed(EmbedState.SUCCESS) {
                 description = "Resumed!"
             }
         }
     }
 
     private suspend fun handleBasePause(
-        event: ChatInputCommandInteractionCreateEvent,
         member: Member,
         response: DeferredEphemeralMessageInteractionResponseBehavior,
         guild: Guild,
@@ -502,14 +505,13 @@ object MusicInteractionHandler : InteractionHandler {
         player.scheduler.setPaused(true)
 
         response.respond {
-            successEmbed {
+            stateEmbed(EmbedState.SUCCESS) {
                 description = "Paused!"
             }
         }
     }
 
     private suspend fun handleBaseSkip(
-        event: ChatInputCommandInteractionCreateEvent,
         member: Member,
         response: DeferredEphemeralMessageInteractionResponseBehavior,
         guild: Guild,
@@ -520,14 +522,13 @@ object MusicInteractionHandler : InteractionHandler {
         player.scheduler.skip()
 
         response.respond {
-            successEmbed {
+            stateEmbed(EmbedState.SUCCESS) {
                 description = "Skipped!"
             }
         }
     }
 
     private suspend fun handleBaseClear(
-        event: ChatInputCommandInteractionCreateEvent,
         member: Member,
         response: DeferredEphemeralMessageInteractionResponseBehavior,
         guild: Guild,
@@ -538,9 +539,10 @@ object MusicInteractionHandler : InteractionHandler {
         player.scheduler.clear()
 
         response.respond {
-            successEmbed {
+            stateEmbed(EmbedState.SUCCESS) {
                 description = "Cleared!"
             }
         }
     }
+
 }

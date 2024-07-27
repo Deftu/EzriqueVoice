@@ -7,16 +7,15 @@ import com.sedmelluq.discord.lavaplayer.track.playback.AudioFrame
 import dev.deftu.pcm.PcmAudioMixer
 import dev.kord.common.entity.Snowflake
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentSkipListSet
 
 object AudioOutputManager {
 
     private val encoder = StandardAudioDataFormats.DISCORD_OPUS.createEncoder(AudioConfiguration())
-    private val managers = ConcurrentHashMap<Snowflake, MutableSet<TrackManager<*>>>()
+    private val managers = ConcurrentHashMap<Snowflake, MutableSet<AudioPlayer>>()
 
     fun createOutputFor(guildId: Snowflake): ByteArray? {
         val players = managers[guildId] ?: return null
-        val frames = players.map(TrackManager<*>::player).mapNotNull(AudioPlayer::provide)
+        val frames = players.mapNotNull(AudioPlayer::provide)
         if (frames.isEmpty()) {
             return null
         }
@@ -33,13 +32,13 @@ object AudioOutputManager {
         }
     }
 
-    fun registerPlayer(guildId: Snowflake, player: TrackManager<*>) {
+    fun registerPlayer(guildId: Snowflake, player: AudioPlayer) {
         managers.computeIfAbsent(guildId) {
             mutableSetOf()
         }.add(player)
     }
 
-    fun unregisterPlayer(guildId: Snowflake, player: TrackManager<*>) {
+    fun unregisterPlayer(guildId: Snowflake, player: AudioPlayer) {
         managers[guildId]?.remove(player)
     }
 

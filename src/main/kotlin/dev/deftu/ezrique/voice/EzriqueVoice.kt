@@ -1,6 +1,7 @@
 package dev.deftu.ezrique.voice
 
 import com.google.gson.FieldNamingPolicy
+import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dev.deftu.ezrique.*
 import dev.deftu.ezrique.voice.music.MusicInteractionHandler
@@ -26,10 +27,12 @@ import dev.kord.gateway.NON_PRIVILEGED
 import dev.kord.gateway.PrivilegedIntent
 import dev.kord.gateway.builder.PresenceBuilder
 import io.sentry.Sentry
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.count
 import kotlinx.coroutines.runBlocking
 import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.DatabaseConfig
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -42,17 +45,16 @@ object EzriqueVoice {
 
     const val NAME = "@PROJECT_NAME@"
     const val VERSION = "@PROJECT_VERSION@"
-    val LOGGER = LogManager.getLogger(NAME)
-    val GSON = GsonBuilder()
+    private val LOGGER: Logger = LogManager.getLogger(NAME)
+    val GSON: Gson = GsonBuilder()
         .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
         .create()
 
-    private val sentryUrl: String
+    private val sentryUrl: String?
         get() {
             var sentryUrl = System.getenv("SENTRY_URL")
             if (sentryUrl == null || sentryUrl.isEmpty()) {
                 sentryUrl = config.get("sentry_url")?.asString
-                if (sentryUrl == null || sentryUrl.isEmpty()) error("No Sentry URL provided!")
             }
 
             return sentryUrl
@@ -81,7 +83,6 @@ object EzriqueVoice {
         }
 
     private lateinit var kord: Kord
-        private set
 
     @JvmStatic
     fun main(args: Array<String>) = runBlocking {
@@ -116,16 +117,13 @@ object EzriqueVoice {
                 }
             }
         } catch (e: Exception) {
-            handleError(e, ErrorCode.KORD_LOGIN)
+            handleError(e, VoiceErrorCode.KORD_LOGIN)
         }
     }
 
     private fun initializeSentry() {
         LOGGER.info("Setting up Sentry")
-        Sentry.init { options ->
-            options.dsn = sentryUrl
-            options.release = "${NAME}@${VERSION}"
-        }
+        sentryUrl?.let { url -> setupSentry(url, NAME, VERSION) }
     }
 
     private suspend fun initializeDatabase(): Boolean {
@@ -216,12 +214,14 @@ object EzriqueVoice {
             val possiblePresences = setOf<suspend PresenceBuilder.(kord: Kord) -> Unit>(
                 { kord ->
                     // Guild count
-                    listening("your voice channels in ${kord.guilds.count()} guilds")
+                    var count = 0
+                    kord.guilds.collect { count++ }
+
+                    listening("your voice channels in about $count guilds")
                 },
                 { kord ->
                     // User count
                     var count = 0
-                    kord.guilds.collectLatest {  }
                     kord.guilds.collect { guild ->
                         count += guild.memberCount ?: guild.members.count() // If we don't know the actual member count, just approximate it from the members we know of
                     }
@@ -247,7 +247,7 @@ object EzriqueVoice {
                         }
                     }
                 }
-            }, 0, TimeUnit.SECONDS.toMillis(10))
+            }, 0, TimeUnit.SECONDS.toMillis(30))
         }
     }
 
@@ -264,7 +264,7 @@ object EzriqueVoice {
                     else -> BaseInteractionHandler.handleCommand(this, guild, rootName, subCommandName, groupName)
                 }
             } catch (e: Exception) {
-                handleError(e, ErrorCode.UNKNOWN_COMMAND)
+                handleError(e, VoiceErrorCode.UNKNOWN_COMMAND)
             }
         }
 
@@ -279,7 +279,7 @@ object EzriqueVoice {
                     else -> BaseInteractionHandler.handleButton(this, guild, interaction.componentId)
                 }
             } catch (e: Exception) {
-                handleError(e, ErrorCode.UNKNOWN_BUTTON)
+                handleError(e, VoiceErrorCode.UNKNOWN_BUTTON)
             }
         }
 
@@ -294,7 +294,7 @@ object EzriqueVoice {
                     else -> BaseInteractionHandler.handleModal(this, guild, interaction.modalId)
                 }
             } catch (e: Exception) {
-                handleError(e, ErrorCode.UNKNOWN_MODAL)
+                handleError(e, VoiceErrorCode.UNKNOWN_MODAL)
             }
         }
 
@@ -309,7 +309,7 @@ object EzriqueVoice {
                     else -> BaseInteractionHandler.handleSelectMenu(this, guild, interaction.componentId)
                 }
             } catch (e: Exception) {
-                handleError(e, ErrorCode.UNKNOWN_SELECTION)
+                handleError(e, VoiceErrorCode.UNKNOWN_SELECTION)
             }
         }
     }

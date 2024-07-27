@@ -3,6 +3,7 @@ package dev.deftu.ezrique.voice.onboarding
 enum class OnboardingStep(
     val readableName: String
 ) {
+
     SETUP_FEATURES("setting up features."),
     TTS_SETUP("setting up TTS."),
     MUSIC_SETUP("setting up music."),
@@ -17,4 +18,5 @@ enum class OnboardingStep(
         MUSIC_SETUP -> DONE
         DONE -> DONE
     }
+
 }

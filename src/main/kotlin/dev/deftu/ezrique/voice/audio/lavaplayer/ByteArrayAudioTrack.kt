@@ -1,4 +1,4 @@
-package dev.deftu.ezrique.voice.audio.lavaplayer.raw
+package dev.deftu.ezrique.voice.audio.lavaplayer
 
 import com.sedmelluq.discord.lavaplayer.container.MediaContainerDescriptor
 import com.sedmelluq.discord.lavaplayer.source.AudioSourceManager
@@ -14,6 +14,7 @@ class ByteArrayAudioTrack(
     val factory: MediaContainerDescriptor,
     private val sourceManager: ByteArrayAudioSourceManager
 ) : DelegatedAudioTrack(trackInfo) {
+
     private val bytes: ByteArray = createBufferedByteArray()
 
     private fun createBufferedByteArray(): ByteArray {
@@ -32,4 +33,5 @@ class ByteArrayAudioTrack(
 
     override fun makeShallowClone(): AudioTrack = ByteArrayAudioTrack(trackInfo, factory, sourceManager)
     override fun getSourceManager(): AudioSourceManager = sourceManager
+
 }

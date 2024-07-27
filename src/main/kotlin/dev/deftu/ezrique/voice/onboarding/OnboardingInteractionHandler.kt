@@ -11,7 +11,6 @@ import dev.kord.common.entity.Snowflake
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.behavior.interaction.updateEphemeralMessage
 import dev.kord.core.entity.Guild
-import dev.kord.core.entity.component.RoleSelectComponent
 import dev.kord.core.event.interaction.ButtonInteractionCreateEvent
 import dev.kord.core.event.interaction.ChatInputCommandInteractionCreateEvent
 import dev.kord.core.event.interaction.ModalSubmitInteractionCreateEvent
@@ -88,7 +87,7 @@ object OnboardingInteractionHandler : InteractionHandler {
                     val newTtsEnabled = GuildConfig.isTtsEnabled(guild.id.get())
                     val newMusicEnabled = GuildConfig.isMusicEnabled(guild.id.get())
 
-                    setForSetupFeatures(guild, newTtsEnabled, newMusicEnabled)
+                    setForSetupFeatures(newTtsEnabled, newMusicEnabled)
                     setupEmbed(OnboardingStep.SETUP_FEATURES)
                 }
 
@@ -99,7 +98,7 @@ object OnboardingInteractionHandler : InteractionHandler {
                     val newDjOnly = GuildConfig.isDjOnly(guild.id.get())
                     val djRole = GuildConfig.getDjRole(guild.id.get())
 
-                    setForMusicSetup(guild, newDjOnly, djRole)
+                    setForMusicSetup(newDjOnly, djRole)
                     setupEmbed(OnboardingStep.MUSIC_SETUP)
                 }
 
@@ -142,13 +141,13 @@ object OnboardingInteractionHandler : InteractionHandler {
             OnboardingStep.SETUP_FEATURES -> {
                 val isMusicEnabled = GuildConfig.isMusicEnabled(guild.id.get())
                 val isTtsEnabled = GuildConfig.isTtsEnabled(guild.id.get())
-                setForSetupFeatures(guild, isTtsEnabled, isMusicEnabled)
+                setForSetupFeatures(isTtsEnabled, isMusicEnabled)
             }
 
             OnboardingStep.MUSIC_SETUP -> {
                 val isDjOnly = GuildConfig.isDjOnly(guild.id.get())
                 val djRole = GuildConfig.getDjRole(guild.id.get())
-                setForMusicSetup(guild, isDjOnly, djRole)
+                setForMusicSetup(isDjOnly, djRole)
             }
 
             OnboardingStep.TTS_SETUP -> setForTtsSetup()
@@ -159,7 +158,6 @@ object OnboardingInteractionHandler : InteractionHandler {
     }
 
     private fun MessageBuilder.setForSetupFeatures(
-        guild: Guild,
         isTtsEnabled: Boolean,
         isMusicEnabled: Boolean
     ) {
@@ -187,7 +185,6 @@ object OnboardingInteractionHandler : InteractionHandler {
     }
 
     private fun MessageBuilder.setForMusicSetup(
-        guild: Guild,
         isDjOnly: Boolean,
         djRole: Long?
     ) {

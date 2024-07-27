@@ -11,6 +11,8 @@ import dev.kord.common.annotation.KordPreview
 import dev.kord.common.annotation.KordVoice
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.behavior.channel.connect
+import dev.kord.core.behavior.edit
+import dev.kord.core.entity.Guild
 import dev.kord.core.entity.channel.VoiceChannel
 import dev.kord.core.event.gateway.ReadyEvent
 import dev.kord.core.event.user.VoiceStateUpdateEvent
@@ -78,6 +80,8 @@ object VoiceConnectionManager {
                     AudioFrame.fromData(AudioOutputManager.createOutputFor(guildId))
                 }
             }
+
+            channel.getGuildOrNull()?.let { guild -> attemptServerDeafen(kord, guild) }
         } else {
             connection.move(channel.id)
         }
@@ -96,18 +100,10 @@ object VoiceConnectionManager {
         return true
     }
 
-//    private fun createAudioOutput(guildId: Snowflake): ByteArray? {
-//        val players = guildPlayers[guildId] ?: return null
-//        val frames = players.mapNotNull { it.player.provide() }
-//        if (frames.isEmpty()) {
-//            return null
-//        }
-//
-//        val mixer = PcmAudioMixer()
-//        frames.map { frame -> frame.data }.forEach(mixer::addFrame)
-//        return mixer.mix { input, output ->
-//            opusEncoder.encode(input, output)
-//        }
-//    }
+    private suspend fun attemptServerDeafen(kord: Kord, guild: Guild) {
+        guild.getMember(kord.selfId).edit {
+            deafened = true
+        }
+    }
 
 }

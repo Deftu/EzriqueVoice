@@ -1,9 +1,9 @@
 package dev.deftu.ezrique.voice
 
+import dev.deftu.ezrique.EmbedState
+import dev.deftu.ezrique.stateEmbed
 import dev.deftu.ezrique.voice.utils.InteractionHandler
 import dev.deftu.ezrique.voice.utils.checkGuild
-import dev.deftu.ezrique.voice.utils.errorEmbed
-import dev.deftu.ezrique.voice.utils.successEmbed
 import dev.kord.common.Color
 import dev.kord.common.annotation.KordVoice
 import dev.kord.common.entity.ChannelType
@@ -73,7 +73,7 @@ object BaseInteractionHandler : InteractionHandler {
             channel = member.getVoiceStateOrNull()?.getChannelOrNull() as? VoiceChannel
             if (channel == null) {
                 response.respond {
-                    errorEmbed {
+                    stateEmbed(EmbedState.ERROR) {
                         description = "You have to be in a voice channel to use this command!"
                     }
                 }
@@ -84,7 +84,7 @@ object BaseInteractionHandler : InteractionHandler {
 
         if (channel.guildId != guild.id) {
             response.respond {
-                errorEmbed {
+                stateEmbed(EmbedState.ERROR) {
                     description = "You have to be in a voice channel **in this server** to use this command!"
                 }
             }
@@ -95,7 +95,7 @@ object BaseInteractionHandler : InteractionHandler {
         val connection = VoiceConnectionManager.getConnection(guild.id)
         if (connection != null) {
             response.respond {
-                errorEmbed {
+                stateEmbed(EmbedState.ERROR) {
                     description = "I'm already in a voice channel! Use `/leave` to make me leave."
                 }
             }
@@ -105,7 +105,7 @@ object BaseInteractionHandler : InteractionHandler {
 
         VoiceConnectionManager.connectTo(event.kord, event.shard, guild.id, channel)
         response.respond {
-            successEmbed {
+            stateEmbed(EmbedState.SUCCESS) {
                 description = "Joined ${channel.mention}!"
             }
         }
@@ -123,7 +123,6 @@ object BaseInteractionHandler : InteractionHandler {
         val channel = member.getVoiceStateOrNull()?.getChannelOrNull() as? VoiceChannel
         var flag = true
         if (channel == null) {
-            val member = event.interaction.user.asMember(guild.id)
             if (member.permissions?.contains(Permission.ManageChannels) == true) {
                 flag = false
             } else {
@@ -154,11 +153,11 @@ object BaseInteractionHandler : InteractionHandler {
         val didLeave = VoiceConnectionManager.leave(event.kord, event.shard, guild.id)
         response.respond {
             if (didLeave) {
-                successEmbed {
+                stateEmbed(EmbedState.SUCCESS) {
                     description = "Left ${channel?.mention ?: "the voice channel"}!"
                 }
             } else {
-                errorEmbed {
+                stateEmbed(EmbedState.ERROR) {
                     description = "I'm not in a voice channel!"
                 }
             }

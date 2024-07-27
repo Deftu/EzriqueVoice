@@ -1,7 +1,10 @@
 package dev.deftu.ezrique.voice.utils
 
-import dev.deftu.ezrique.voice.audio.TrackManager
-import dev.deftu.ezrique.voice.audio.TrackScheduler
+import dev.deftu.ezrique.ERROR_COLOR
+import dev.deftu.ezrique.EmbedState
+import dev.deftu.ezrique.stateEmbed
+import dev.deftu.ezrique.voice.audio.GuildAudioManager
+import dev.deftu.ezrique.voice.audio.scheduler.TrackScheduler
 import dev.deftu.ezrique.voice.sql.GuildConfig
 import dev.kord.common.Color
 import dev.kord.common.entity.Permissions
@@ -10,19 +13,14 @@ import dev.kord.core.behavior.interaction.response.DeferredEphemeralMessageInter
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.Guild
 import dev.kord.core.entity.Member
-import dev.kord.rest.builder.message.EmbedBuilder
-import dev.kord.rest.builder.message.MessageBuilder
 import dev.kord.rest.builder.message.embed
-
-const val SUCCESS_COLOR = 0x038700
-const val ERROR_COLOR = 0x8C0317
 
 suspend fun Guild?.checkGuild(
     response: DeferredEphemeralMessageInteractionResponseBehavior? = null
 ): Boolean {
     if (this == null) {
         response?.respond {
-            errorEmbed {
+            stateEmbed(EmbedState.ERROR) {
                 description = "This command can only be used in a server!"
             }
         }
@@ -64,7 +62,7 @@ suspend fun Member.checkDj(
     val djRoleId = GuildConfig.getDjRole(guild.id.get()) ?: return true
     if (Snowflake(djRoleId) !in roleIds) {
         response?.respond {
-            errorEmbed {
+            stateEmbed(EmbedState.ERROR) {
                 description = "You are not this server's DJ!"
             }
         }
@@ -75,36 +73,15 @@ suspend fun Member.checkDj(
     return true
 }
 
-fun MessageBuilder.successEmbed(
-    builder: EmbedBuilder.() -> Unit
-) {
-    embed {
-        title = "Success!"
-        color = Color(SUCCESS_COLOR)
-        builder()
-    }
-}
-
-fun MessageBuilder.errorEmbed(
-    builder: EmbedBuilder.() -> Unit
-) {
-    embed {
-        title = "Error!"
-        color = Color(ERROR_COLOR)
-        builder()
-    }
-}
-
-suspend fun <T : TrackScheduler> Map<Snowflake, TrackManager<T>>.getPlayer(
+suspend fun <T : TrackScheduler<*>> Map<Snowflake, GuildAudioManager<T>>.getPlayer(
     guildId: Long,
     response: DeferredEphemeralMessageInteractionResponseBehavior? = null
-): TrackManager<T>? {
+): GuildAudioManager<T>? {
     val player = this[Snowflake(guildId)]
     if (player == null && response != null) {
         response.respond {
-            embed {
+            stateEmbed(EmbedState.ERROR) {
                 title = "Not Connected"
-                color = Color(ERROR_COLOR)
                 description = "The bot is not connected to a voice channel!"
             }
         }

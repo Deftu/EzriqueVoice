@@ -14,7 +14,7 @@ object Weilnet {
         .build()
 
     @Throws(IllegalStateException::class)
-    fun tts(
+    fun getAudioData(
         text: String,
         voice: Voice
     ): String {
@@ -31,14 +31,18 @@ object Weilnet {
                 .build()
         ).execute()
 
-        val body = response.body?.string() ?: throw IllegalStateException("Response body is null!")
-        val json = JsonParser.parseString(body).asJsonObject
+        return response.use {
+            val body = response.body?.string() ?: throw IllegalStateException("Response body is null!")
+            val json = JsonParser.parseString(body).asJsonObject
 
-        if (json.get("success").asBoolean) {
-            return json.get("data").asString
-        } else if (json.has("error")) {
-            throw IllegalStateException(json.get("error").asString)
-        } else throw IllegalStateException("Unknown error!")
+            if (json.get("success").asBoolean) {
+                json.get("data").asString
+            } else if (json.has("error")) {
+                throw IllegalStateException(json.get("error").asString)
+            } else {
+                throw IllegalStateException("Unknown error!")
+            }
+        }
     }
 
 }

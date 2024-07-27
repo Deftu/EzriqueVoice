@@ -1,7 +1,7 @@
 package dev.deftu.ezrique.voice.sql
 
 import dev.deftu.ezrique.handleError
-import dev.deftu.ezrique.voice.ErrorCode
+import dev.deftu.ezrique.voice.VoiceErrorCode
 import dev.deftu.ezrique.voice.onboarding.OnboardingStep
 import org.jetbrains.exposed.dao.LongEntity
 import org.jetbrains.exposed.dao.LongEntityClass
@@ -26,121 +26,73 @@ class GuildConfig(
     companion object : LongEntityClass<GuildConfig>(GuildConfigTable) {
 
         suspend fun  getOnboardingStep(guildId: Long): OnboardingStep {
-            return try {
-                newSuspendedTransaction {
-                    findById(guildId)?.onboardingStep ?: OnboardingStep.SETUP_FEATURES
-                }
-            } catch (t: Throwable) {
-                handleError(t, ErrorCode.DATABASE_QUERY)
-                OnboardingStep.SETUP_FEATURES
+            return newSuspendedTransaction {
+                findById(guildId)?.onboardingStep ?: OnboardingStep.SETUP_FEATURES
             }
         }
 
         suspend fun setOnboardingStep(guildId: Long, step: OnboardingStep) {
-            try {
-                newSuspendedTransaction {
-                    val config = findById(guildId) ?: new(guildId) {}
-                    config.onboardingStep = step
-                }
-            } catch (t: Throwable) {
-                handleError(t, ErrorCode.DATABASE_QUERY)
+            newSuspendedTransaction {
+                val config = findById(guildId) ?: new(guildId) {}
+                config.onboardingStep = step
             }
         }
 
         suspend fun isMusicEnabled(guildId: Long): Boolean {
-            return try {
-                newSuspendedTransaction {
-                    findById(guildId)?.music ?: true
-                }
-            } catch (t: Throwable) {
-                handleError(t, ErrorCode.DATABASE_QUERY)
-                true
+            return newSuspendedTransaction {
+                findById(guildId)?.music ?: true
             }
         }
 
         suspend fun setMusicEnabled(guildId: Long, enabled: Boolean): Boolean {
-            return try {
-                newSuspendedTransaction {
-                    val config = findById(guildId) ?: new(guildId) {}
-                    config.music = enabled
+            return newSuspendedTransaction {
+                val config = findById(guildId) ?: new(guildId) {}
+                config.music = enabled
 
-                    config.music
-                }
-            } catch (t: Throwable) {
-                handleError(t, ErrorCode.DATABASE_QUERY)
-                true
+                config.music
             }
         }
 
         suspend fun isTtsEnabled(guildId: Long): Boolean {
-            return try {
-                newSuspendedTransaction {
-                    findById(guildId)?.tts ?: true
-                }
-            } catch (t: Throwable) {
-                handleError(t, ErrorCode.DATABASE_QUERY)
-                true
+            return newSuspendedTransaction {
+                findById(guildId)?.tts ?: true
             }
         }
 
         suspend fun setTtsEnabled(guildId: Long, enabled: Boolean): Boolean {
-            return try {
-                newSuspendedTransaction {
-                    val config = findById(guildId) ?: new(guildId) {}
-                    config.tts = enabled
+            return newSuspendedTransaction {
+                val config = findById(guildId) ?: new(guildId) {}
+                config.tts = enabled
 
-                    config.tts
-                }
-            } catch (t: Throwable) {
-                handleError(t, ErrorCode.DATABASE_QUERY)
-                true
+                config.tts
             }
         }
 
         suspend fun isDjOnly(guildId: Long): Boolean {
-            return try {
-                newSuspendedTransaction {
-                    findById(guildId)?.djOnly ?: false
-                }
-            } catch (t: Throwable) {
-                handleError(t, ErrorCode.DATABASE_QUERY)
-                false
+            return newSuspendedTransaction {
+                findById(guildId)?.djOnly ?: false
             }
         }
 
         suspend fun setDjOnly(guildId: Long, djOnly: Boolean): Boolean {
-            return try {
-                newSuspendedTransaction {
-                    val config = findById(guildId) ?: new(guildId) {}
-                    config.djOnly = djOnly
+            return newSuspendedTransaction {
+                val config = findById(guildId) ?: new(guildId) {}
+                config.djOnly = djOnly
 
-                    config.djOnly
-                }
-            } catch (t: Throwable) {
-                handleError(t, ErrorCode.DATABASE_QUERY)
-                false
+                config.djOnly
             }
         }
 
         suspend fun getDjRole(guildId: Long): Long? {
-            return try {
-                newSuspendedTransaction {
-                    findById(guildId)?.djRole
-                }
-            } catch (t: Throwable) {
-                handleError(t, ErrorCode.DATABASE_QUERY)
-                null
+            return newSuspendedTransaction {
+                findById(guildId)?.djRole
             }
         }
 
         suspend fun setDjRole(guildId: Long, djRole: Long?) {
-            try {
-                newSuspendedTransaction {
-                    val config = findById(guildId) ?: new(guildId) {}
-                    config.djRole = djRole
-                }
-            } catch (t: Throwable) {
-                handleError(t, ErrorCode.DATABASE_QUERY)
+            newSuspendedTransaction {
+                val config = findById(guildId) ?: new(guildId) {}
+                config.djRole = djRole
             }
         }
 

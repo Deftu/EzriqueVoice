@@ -4,6 +4,7 @@ enum class Voice(
     val code: String,
     val desc: String
 ) {
+
     // Disney Voices
     GHOST_FACE("en_us_ghostface", "Ghost Face (Scream)"),
     CHEWBACCA("en_us_chewbacca", "Chewbacca (Star Wars) [non-intelligible]"),
@@ -58,6 +59,7 @@ enum class Voice(
     SERIOUS("en_male_cody", "Serious");
 
     companion object {
+
         /**
          * We have to batch the voices into chunks of 25, otherwise the API will return an error.
          */
@@ -67,7 +69,11 @@ enum class Voice(
 
         @Suppress("EnumValuesSoftDeprecate")
         fun fromCode(code: String): Voice {
-            return values().firstOrNull { it.code == code } ?: DEFAULT
+            return values().firstOrNull { voice ->
+                voice.code == code
+            } ?: DEFAULT
         }
+
     }
+
 }

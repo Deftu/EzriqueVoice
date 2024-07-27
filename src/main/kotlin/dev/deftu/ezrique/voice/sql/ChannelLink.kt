@@ -9,15 +9,19 @@ import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 
 object ChannelLinkTable : LongIdTable("channel_link") {
+
     val guildId = long("guild_id")
     val textChannelId = long("text_channel_id")
     val voiceChannelId = long("voice_channel_id")
+
 }
 
 class ChannelLink(
     id: EntityID<Long>
 ) : LongEntity(id) {
+
     companion object : LongEntityClass<ChannelLink>(ChannelLinkTable) {
+
         suspend fun createLink(
             guildId: Long,
             textChannelId: Long,
@@ -72,9 +76,11 @@ class ChannelLink(
                 }.toList()
             }
         }
+
     }
 
     var guildId by ChannelLinkTable.guildId
     var textChannelId by ChannelLinkTable.textChannelId
     var voiceChannelId by ChannelLinkTable.voiceChannelId
+
 }

@@ -1,5 +1,7 @@
 package dev.deftu.ezrique.voice.tts
 
+import dev.deftu.ezrique.*
+import dev.deftu.ezrique.voice.VoiceErrorCode
 import dev.deftu.ezrique.voice.sql.ChannelLink
 import dev.deftu.ezrique.voice.sql.GuildConfig
 import dev.deftu.ezrique.voice.sql.MemberConfig
@@ -18,6 +20,7 @@ import dev.kord.rest.builder.interaction.*
 import dev.kord.rest.builder.message.embed
 
 object TtsInteractionHandler : InteractionHandler {
+
     override val name = "tts"
 
     override fun setupCommands(builder: GlobalMultiApplicationCommandBuilder) {
@@ -98,7 +101,7 @@ object TtsInteractionHandler : InteractionHandler {
         when (subCommandName) {
             "toggle" -> handleConfigToggle(event, member, response, guild)
             "link" -> handleConfigLink(event, member, response, guild)
-            "unlink" -> handleConfigUnlink(event, member, response, guild)
+            "unlink" -> handleConfigUnlink(event, member, response)
         }
     }
 
@@ -116,13 +119,13 @@ object TtsInteractionHandler : InteractionHandler {
         val newValue = event.interaction.command.booleans["value"] ?: !GuildConfig.isTtsEnabled(guild.id.get())
         val currentValue = try {
             GuildConfig.setTtsEnabled(guild.id.get(), newValue)
-        } catch (e: Exception) {
-            handleError(response, ErrorCode.SET_TTS_TOGGLE_GUILD, e)
+        } catch (t: Throwable) {
+            handleError(t, VoiceErrorCode.SET_TTS_TOGGLE_GUILD, response)
             return
         }
 
         response.respond {
-            successEmbed {
+            stateEmbed(EmbedState.SUCCESS) {
                 description = "TTS is now ${if (currentValue) "enabled" else "disabled"} in your server!"
             }
         }
@@ -139,15 +142,14 @@ object TtsInteractionHandler : InteractionHandler {
                 response
         )) return
 
-        val textChannel = event.interaction.command.channels["text_channel"]?.asChannel()
-        val voiceChannel = event.interaction.command.channels["voice_channel"]?.asChannel()
-        if (textChannel == null || voiceChannel == null) {
+        val providedTextChannel = event.interaction.command.channels["text_channel"]?.asChannel()
+        val providedVoiceChannel = event.interaction.command.channels["voice_channel"]?.asChannel()
+        if (providedTextChannel == null || providedVoiceChannel == null) {
             val links = ChannelLink.getLinks(guild.id.get())
 
             response.respond {
-                embed {
+                stateEmbed(EmbedState.SUCCESS) {
                     title = "Linked Channels"
-                    color = Color(SUCCESS_COLOR)
                     description = buildString {
                         if (links.isEmpty()) {
                             append("No linked channels!")
@@ -167,15 +169,15 @@ object TtsInteractionHandler : InteractionHandler {
         }
 
         try {
-            ChannelLink.createLink(guild.id.get(), textChannel.id.get(), voiceChannel.id.get())
-        } catch (e: Exception) {
-            handleError(response, ErrorCode.SET_TTS_LINK, e)
+            ChannelLink.createLink(guild.id.get(), providedTextChannel.id.get(), providedVoiceChannel.id.get())
+        } catch (t: Throwable) {
+            handleError(t, VoiceErrorCode.SET_TTS_LINK, response)
             return
         }
 
         response.respond {
-            successEmbed {
-                description = "Linked ${textChannel.mention} to ${voiceChannel.mention}!"
+            stateEmbed(EmbedState.SUCCESS) {
+                description = "Linked ${providedTextChannel.mention} to ${providedVoiceChannel.mention}!"
             }
         }
     }
@@ -183,8 +185,7 @@ object TtsInteractionHandler : InteractionHandler {
     private suspend fun handleConfigUnlink(
         event: ChatInputCommandInteractionCreateEvent,
         member: Member,
-        response: DeferredEphemeralMessageInteractionResponseBehavior,
-        guild: Guild
+        response: DeferredEphemeralMessageInteractionResponseBehavior
     ) {
         if (!member.checkPermissions(
                 Permissions(Permission.ManageChannels),
@@ -195,13 +196,13 @@ object TtsInteractionHandler : InteractionHandler {
 
         try {
             ChannelLink.removeLink(textChannel.id.get())
-        } catch (e: Exception) {
-            handleError(response, ErrorCode.SET_TTS_UNLINK, e)
+        } catch (t: Throwable) {
+            handleError(t, VoiceErrorCode.SET_TTS_UNLINK, response)
             return
         }
 
         response.respond {
-            successEmbed {
+            stateEmbed(EmbedState.SUCCESS) {
                 description = "Unlinked ${textChannel.mention}!"
             }
         }
@@ -216,9 +217,9 @@ object TtsInteractionHandler : InteractionHandler {
     ) {
         when (subCommandName) {
             "toggle" -> handleBaseToggle(event, member, response, guild)
-            "voice" -> handleBaseVoice(event, member, response, guild)
-            "stop" -> handleBaseStop(event, member, response, guild)
-            "skip" -> handleBaseSkip(event, member, response, guild)
+            "voice" -> handleBaseVoice(event, member, response)
+            "stop" -> handleBaseStop(response, guild)
+            "skip" -> handleBaseSkip(response, guild)
         }
     }
 
@@ -231,13 +232,13 @@ object TtsInteractionHandler : InteractionHandler {
         val newValue = event.interaction.command.booleans["value"] ?: !MemberConfig.isTtsEnabled(guild.id.get())
         val currentValue = try {
             MemberConfig.setTtsEnabled(member.id.get(), newValue)
-        } catch (e: Exception) {
-            handleError(response, ErrorCode.SET_TTS_TOGGLE, e)
+        } catch (t: Throwable) {
+            handleError(t, VoiceErrorCode.SET_TTS_TOGGLE, response)
             return
         }
 
         response.respond {
-            successEmbed {
+            stateEmbed(EmbedState.SUCCESS) {
                 description = "TTS is now ${if (currentValue) "enabled" else "disabled"}!"
             }
         }
@@ -246,15 +247,14 @@ object TtsInteractionHandler : InteractionHandler {
     private suspend fun handleBaseVoice(
         event: ChatInputCommandInteractionCreateEvent,
         member: Member,
-        response: DeferredEphemeralMessageInteractionResponseBehavior,
-        guild: Guild
+        response: DeferredEphemeralMessageInteractionResponseBehavior
     ) {
         val voiceCode1 = event.interaction.command.strings["voice_batch_1"]
         val voiceCode2 = event.interaction.command.strings["voice_batch_2"]
         if (voiceCode1 == null && voiceCode2 == null) {
             val currentVoice = MemberConfig.getVoice(member.id.get())
             response.respond {
-                successEmbed {
+                stateEmbed(EmbedState.SUCCESS) {
                     description = "Your current voice is ${currentVoice.desc}!"
                 }
             }
@@ -262,7 +262,7 @@ object TtsInteractionHandler : InteractionHandler {
             return
         } else if (voiceCode1 != null && voiceCode2 != null) {
             response.respond {
-                errorEmbed {
+                stateEmbed(EmbedState.ERROR) {
                     description = "You can only pick one voice!"
                 }
             }
@@ -274,21 +274,19 @@ object TtsInteractionHandler : InteractionHandler {
 
         try {
             MemberConfig.setVoice(member.id.get(), voice)
-        } catch (e: Exception) {
-            handleError(response, ErrorCode.SET_TTS_VOICE, e)
+        } catch (t: Throwable) {
+            handleError(t, VoiceErrorCode.SET_TTS_VOICE, response)
             return
         }
 
         response.respond {
-            successEmbed {
+            stateEmbed(EmbedState.SUCCESS) {
                 description = "Set your voice to ${voice.desc}!"
             }
         }
     }
 
     private suspend fun handleBaseStop(
-        event: ChatInputCommandInteractionCreateEvent,
-        member: Member,
         response: DeferredEphemeralMessageInteractionResponseBehavior,
         guild: Guild
     ) {
@@ -296,15 +294,13 @@ object TtsInteractionHandler : InteractionHandler {
         player.scheduler.clear()
 
         response.respond {
-            successEmbed {
+            stateEmbed(EmbedState.SUCCESS) {
                 description = "Stopped speaking!"
             }
         }
     }
 
     private suspend fun handleBaseSkip(
-        event: ChatInputCommandInteractionCreateEvent,
-        member: Member,
         response: DeferredEphemeralMessageInteractionResponseBehavior,
         guild: Guild
     ) {
@@ -312,9 +308,10 @@ object TtsInteractionHandler : InteractionHandler {
         player.scheduler.skip()
 
         response.respond {
-            successEmbed {
+            stateEmbed(EmbedState.SUCCESS) {
                 description = "Skipped the current message!"
             }
         }
     }
+
 }

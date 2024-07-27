@@ -1,4 +1,4 @@
-package dev.deftu.ezrique.voice.audio.lavaplayer.raw
+package dev.deftu.ezrique.voice.audio.lavaplayer
 
 import com.sedmelluq.discord.lavaplayer.container.MediaContainerDescriptor
 import com.sedmelluq.discord.lavaplayer.container.MediaContainerDetection
@@ -18,6 +18,7 @@ import java.util.Base64
 class ByteArrayAudioSourceManager(
     containerRegistry: MediaContainerRegistry = MediaContainerRegistry.DEFAULT_REGISTRY
 ) : ProbingAudioSourceManager(containerRegistry) {
+
     private fun getContainer(reference: AudioReference): MediaContainerDetectionResult {
         try {
             ByteArraySeekableInputStream(Base64.getDecoder().decode(reference.identifier)).use { stream ->
@@ -60,4 +61,5 @@ class ByteArrayAudioSourceManager(
     override fun shutdown() {
         // Nothing to shut down
     }
+
 }

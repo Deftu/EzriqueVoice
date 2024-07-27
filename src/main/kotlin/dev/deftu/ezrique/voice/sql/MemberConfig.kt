@@ -1,7 +1,7 @@
 package dev.deftu.ezrique.voice.sql
 
 import dev.deftu.ezrique.handleError
-import dev.deftu.ezrique.voice.ErrorCode
+import dev.deftu.ezrique.voice.VoiceErrorCode
 import dev.deftu.ezrique.voice.tts.Voice
 import org.jetbrains.exposed.dao.LongEntity
 import org.jetbrains.exposed.dao.LongEntityClass
@@ -23,51 +23,32 @@ class MemberConfig(
     companion object : LongEntityClass<MemberConfig>(MemberConfigTable) {
 
         suspend fun isTtsEnabled(memberId: Long): Boolean {
-            return try {
-                newSuspendedTransaction {
-                    findById(memberId)?.tts ?: true
-                }
-            } catch (t: Throwable) {
-                handleError(t, ErrorCode.DATABASE_QUERY)
-                true
+            return newSuspendedTransaction {
+                findById(memberId)?.tts ?: true
             }
         }
 
         suspend fun setTtsEnabled(memberId: Long, enabled: Boolean): Boolean {
-            return try {
-                newSuspendedTransaction {
-                    val config = findById(memberId) ?: new(memberId) {}
-                    config.tts = enabled
+            return newSuspendedTransaction {
+                val config = findById(memberId) ?: new(memberId) {}
+                config.tts = enabled
 
-                    config.tts
-                }
-            } catch (t: Throwable) {
-                handleError(t, ErrorCode.DATABASE_QUERY)
-                true
+                config.tts
             }
         }
 
         suspend fun getVoice(memberId: Long): Voice {
-            return try {
-                newSuspendedTransaction {
-                    findById(memberId)?.voice?.let {
-                        Voice.fromCode(it)
-                    }
-                } ?: Voice.DEFAULT
-            } catch (t: Throwable) {
-                handleError(t, ErrorCode.DATABASE_QUERY)
-                Voice.DEFAULT
-            }
+            return newSuspendedTransaction {
+                findById(memberId)?.voice?.let {
+                    Voice.fromCode(it)
+                }
+            } ?: Voice.DEFAULT
         }
 
         suspend fun setVoice(memberId: Long, voice: Voice) {
-            try {
-                newSuspendedTransaction {
-                    val config = findById(memberId) ?: new(memberId) {}
-                    config.voice = voice.code
-                }
-            } catch (t: Throwable) {
-                handleError(t, ErrorCode.DATABASE_QUERY)
+            newSuspendedTransaction {
+                val config = findById(memberId) ?: new(memberId) {}
+                config.voice = voice.code
             }
         }
 

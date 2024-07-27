@@ -1,22 +1,17 @@
 package dev.deftu.ezrique.voice.tts
 
-import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager
-import com.sedmelluq.discord.lavaplayer.tools.FriendlyException
-import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist
-import com.sedmelluq.discord.lavaplayer.track.AudioTrack
 import dev.deftu.ezrique.config
+import dev.deftu.ezrique.handleError
 import dev.deftu.ezrique.voice.*
-import dev.deftu.ezrique.voice.audio.AudioOutputManager
 import dev.deftu.ezrique.voice.events.VoiceChannelJoinEvent
-import dev.deftu.ezrique.voice.audio.TrackManager
-import dev.deftu.ezrique.voice.audio.lavaplayer.raw.ByteArrayAudioSourceManager
+import dev.deftu.ezrique.voice.audio.GuildAudioManager
+import dev.deftu.ezrique.voice.audio.lavaplayer.ByteArrayAudioSourceManager
 import dev.deftu.ezrique.voice.events.VoiceChannelLeaveEvent
 import dev.deftu.ezrique.voice.sql.ChannelLink
 import dev.deftu.ezrique.voice.sql.GuildConfig
 import dev.deftu.ezrique.voice.sql.MemberConfig
 import dev.deftu.ezrique.voice.utils.*
-import dev.deftu.ezrique.voice.utils.ErrorCode
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.DeferredEphemeralMessageInteractionResponseBehavior
@@ -34,7 +29,7 @@ object TtsHandler {
 
     private val LOGGER = LoggerFactory.getLogger("${EzriqueVoice.NAME} TTS Handler")
 
-    private val guildPlayers = mutableMapOf<Snowflake, TrackManager<TtsTrackScheduler>>()
+    private val guildManagers = mutableMapOf<Snowflake, GuildAudioManager<TtsTrackScheduler>>()
     private val playerManager = DefaultAudioPlayerManager().apply {
         registerSourceManager(ByteArrayAudioSourceManager())
         configure()
@@ -47,13 +42,13 @@ object TtsHandler {
 
     private fun setupVoiceListeners(kord: Kord) {
         kord.on<VoiceChannelJoinEvent> {
-            handleJoin(playerManager, guildPlayers) { player ->
+            handleJoin(playerManager, guildManagers) { player ->
                 TtsTrackScheduler(player)
             }
         }
 
         kord.on<VoiceChannelLeaveEvent> {
-            handleLeave(guildPlayers)
+            handleLeave(guildManagers)
         }
     }
 
@@ -67,41 +62,26 @@ object TtsHandler {
 
             if (
                 !GuildConfig.isTtsEnabled(guild.id.value.toLong()) ||
-                !MemberConfig.isTtsEnabled(author.id.value.toLong())
+                !MemberConfig.isTtsEnabled(author.id.value.toLong()) ||
+                message.content.startsWith(textBypass())
             ) return@on
 
-            LOGGER.debug("TTS Message - TTS is enabled for the guild and user.")
-
-            if (message.content.startsWith(textBypass())) return@on
-
-            LOGGER.debug("TTS Message - Message does not start with the text bypass.")
-
             val voiceState = member?.getVoiceStateOrNull() ?: return@on
-
-            LOGGER.debug("TTS Message - User has a known voice state.")
-
-            val channel = voiceState
-                ?.getChannelOrNull()
-                ?: return@on
-
-            LOGGER.debug("TTS Message - User is in a voice channel.")
-
-            if (!VoiceConnectionManager.isConnected(guild.id)) return@on
-
-            LOGGER.debug("TTS Message - Bot is connected to user's voice channel.")
+            val channel = voiceState.getChannelOrNull() ?: return@on
 
             if (
-                !ChannelLink.isPresent(
+                !VoiceConnectionManager.isConnected(guild.id) ||
+                (!ChannelLink.isPresent(
                     message.channelId.value.toLong(),
                     channel.id.value.toLong()
                 ) &&
-                channel.id != message.channelId
+                channel.id != message.channelId)
             ) return@on
 
             LOGGER.debug("TTS Message - Channel is linked to user's voice channel.")
 
             val voice = MemberConfig.getVoice(author.id.value.toLong())
-            val player = guildPlayers[guild.id] ?: return@on
+            val manager = guildManagers[guild.id] ?: return@on
 
             LOGGER.debug("TTS Message - Player is ready.")
 
@@ -112,9 +92,9 @@ object TtsHandler {
 
             chunkedText.forEach { chunk ->
                 val data = try {
-                    Weilnet.tts(chunk, voice)
-                } catch (e: Exception) {
-                    val message = handleError(message, ErrorCode.READ_TTS, e)
+                    Weilnet.getAudioData(chunk, voice)
+                } catch (t: Throwable) {
+                    val message = handleError(t, VoiceErrorCode.READ_TTS, message)
 
                     // Delete the above message after 15 seconds
                     messageCoroutineScope.run {
@@ -125,23 +105,7 @@ object TtsHandler {
                     return@forEach
                 }
 
-                playerManager.loadItem(data, object : AudioLoadResultHandler {
-                    override fun trackLoaded(track: AudioTrack) {
-                        player.scheduler.queue(message.id, track)
-                    }
-
-                    override fun playlistLoaded(playlist: AudioPlaylist?) {
-                        throw UnsupportedOperationException("Not supported")
-                    }
-
-                    override fun noMatches() {
-                        throw UnsupportedOperationException("Not supported")
-                    }
-
-                    override fun loadFailed(exception: FriendlyException) {
-                        throw UnsupportedOperationException("Not supported")
-                    }
-                })
+                playerManager.loadItem(data, TtsAudioLoadResultHandler(messageCoroutineScope, message, manager.scheduler))
             }
         }
     }
@@ -149,7 +113,7 @@ object TtsHandler {
     suspend fun getPlayer(
         guildId: Long,
         response: DeferredEphemeralMessageInteractionResponseBehavior
-    ) = guildPlayers.getPlayer(guildId, response)
+    ) = guildManagers.getPlayer(guildId, response)
 
     private fun parseMessage(
         guild: Guild,
