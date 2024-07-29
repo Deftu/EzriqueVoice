@@ -24,7 +24,7 @@ ENV APP_HOME=/app
 WORKDIR $APP_HOME
 
 ## Copy the built JAR file
-COPY --from=builder $APP_HOME/build/libs/EzriqueVoice.jar $APP_HOME/EzriqueVoice.jar
+COPY --from=builder $APP_HOME/build/libs/ezrique-voice.jar $APP_HOME/ezrique-voice.jar
 
 ## Set up healthchecks
 HEALTHCHECK --interval=30s --timeout=30s --start-period=30s \
