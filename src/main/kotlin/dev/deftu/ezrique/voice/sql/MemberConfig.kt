@@ -1,7 +1,5 @@
 package dev.deftu.ezrique.voice.sql
 
-import dev.deftu.ezrique.handleError
-import dev.deftu.ezrique.voice.VoiceErrorCode
 import dev.deftu.ezrique.voice.tts.Voice
 import org.jetbrains.exposed.dao.LongEntity
 import org.jetbrains.exposed.dao.LongEntityClass

@@ -11,6 +11,10 @@ object Healthchecks {
     private var server: NettyApplicationEngine? = null
 
     fun start() {
+        if (server != null) {
+            close()
+        }
+
         server = embeddedServer(Netty, port = 6139) {
             routing {
                 get("/health") {

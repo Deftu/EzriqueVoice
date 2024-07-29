@@ -15,10 +15,12 @@ import dev.deftu.ezrique.voice.tts.TtsHandler
 import dev.deftu.ezrique.voice.tts.TtsInteractionHandler
 import dev.deftu.ezrique.voice.utils.Healthchecks
 import dev.deftu.ezrique.voice.utils.isInDocker
+import dev.deftu.ezrique.voice.utils.scheduleAtFixedRate
 import dev.kord.common.entity.PresenceStatus
 import dev.kord.core.Kord
 import dev.kord.core.event.gateway.DisconnectEvent
 import dev.kord.core.event.gateway.ReadyEvent
+import dev.kord.core.event.gateway.ResumedEvent
 import dev.kord.core.event.interaction.*
 import dev.kord.core.on
 import dev.kord.gateway.Intent
@@ -27,10 +29,10 @@ import dev.kord.gateway.NON_PRIVILEGED
 import dev.kord.gateway.PrivilegedIntent
 import dev.kord.gateway.builder.PresenceBuilder
 import io.sentry.Sentry
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.count
-import kotlinx.coroutines.runBlocking
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.jetbrains.exposed.sql.Database
@@ -49,6 +51,8 @@ object EzriqueVoice {
     val GSON: Gson = GsonBuilder()
         .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
         .create()
+
+    private val presenceScope = Dispatchers.Default + SupervisorJob()
 
     private val sentryUrl: String?
         get() {
@@ -181,6 +185,15 @@ object EzriqueVoice {
             }
         }
 
+        kord.on<ResumedEvent> {
+            if (isInDocker()) {
+                LOGGER.info("Resumed connection to Discord - starting healthcheck server")
+
+                // Set up healthcheck HTTP server
+                Healthchecks.start()
+            }
+        }
+
         kord.on<DisconnectEvent> {
             if (isInDocker()) {
                 LOGGER.info("Stopped healthcheck server - Kord disconnect")
@@ -198,6 +211,10 @@ object EzriqueVoice {
         kord.on<ReadyEvent> {
             LOGGER.info("Logged in as ${kord.getSelf().tag}")
 
+        }
+
+        kord.on<ResumedEvent> {
+            LOGGER.info("Resumed connection to Discord")
         }
 
         /**
@@ -231,8 +248,9 @@ object EzriqueVoice {
             )
 
             var lastPresenceIndex = 0
-            Timer().scheduleAtFixedRate(object : TimerTask() {
-                override fun run() {
+
+            CoroutineScope(presenceScope).launch {
+                scheduleAtFixedRate(TimeUnit.SECONDS, 0, 30) {
                     runBlocking {
                         val presenceIndex = (lastPresenceIndex + 1) % possiblePresences.size
                         lastPresenceIndex = presenceIndex
@@ -247,7 +265,7 @@ object EzriqueVoice {
                         }
                     }
                 }
-            }, 0, TimeUnit.SECONDS.toMillis(30))
+            }
         }
     }
 
