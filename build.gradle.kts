@@ -17,14 +17,20 @@ repositories {
 
 dependencies {
     shade(implementation("dev.deftu:ezrique-core:${libs.versions.ezrique.core.get()}")!!)
+
+    // Audio management
+    shade(implementation("dev.arbjerg:lavaplayer:${libs.versions.lavaplayer.get()}")!!)
+
+    // Kord voice
     shade(implementation("dev.kord:kord-core-voice:${libs.versions.kord.get()}")!!)
     shade(implementation("dev.kord:kord-voice:${libs.versions.kord.get()}")!!)
+
+    // Audio mixing
     shade(implementation("dev.deftu:pcm-audio-utils:${libs.versions.pcm.audio.utils.get()}")!!)
-    shade(implementation("dev.arbjerg:lavaplayer:${libs.versions.lavaplayer.get()}")!!)
+
+    // YouTube audio playback
     shade(implementation("dev.lavalink.youtube:common:${libs.versions.lavalink.youtube.get()}")!!)
 
-    shade(implementation("io.ktor:ktor-server-core:${libs.versions.ktor.get()}")!!)
-    shade(implementation("io.ktor:ktor-server-netty:${libs.versions.ktor.get()}")!!)
 }
 
 tasks {
