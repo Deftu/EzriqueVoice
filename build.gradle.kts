@@ -31,6 +31,8 @@ dependencies {
     // YouTube audio playback
     shade(implementation("dev.lavalink.youtube:common:${libs.versions.lavalink.youtube.get()}")!!)
 
+    // Voice recognition
+    shade(implementation("com.alphacephei:vosk:${libs.versions.vosk.get()}")!!)
 }
 
 tasks {
